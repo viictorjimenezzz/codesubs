@@ -1,0 +1,39 @@
+[
+  {
+    "id": "0a07e658-1bde-4ee0-b802-ae0aea9b0b7f",
+    "provider": "claude",
+    "slug": "work",
+    "reference": "claude/work",
+    "home": "/example/vault/claude/work",
+    "env": {"CLAUDE_CONFIG_DIR": "/example/vault/claude/work"},
+    "email": "me@example.com",
+    "plan": "max",
+    "lastUpdated": "2026-11-18T10:00:00.125Z",
+    "availablePercent": 72,
+    "weeklyRemainingPercent": 88,
+    "quota": {
+      "windows": [
+        {"kind": "session", "label": "5h", "usedPercent": 28, "resetsAt": "2099-01-01T00:00:00.250Z", "windowDurationMinutes": 300},
+        {"kind": "weekly", "label": "Week", "usedPercent": 12, "resetsAt": "2099-01-01T00:00:00Z", "windowDurationMinutes": 10080},
+        {"kind": "weeklyModel", "label": "Sonnet", "usedPercent": 52}
+      ],
+      "resetCredits": {
+        "available": 2,
+        "nextExpiry": "2099-01-01T00:00:00Z",
+        "grants": [
+          {"label": "Weekly", "available": 2, "startsAt": "2026-01-01T09:00:00.500Z", "expiresAt": "2099-01-01T00:00:00Z", "paused": false},
+          {"label": "Session", "available": 1, "paused": true}
+        ]
+      }
+    }
+  },
+  {
+    "id": "0a07e658-1bde-4ee0-b802-ae0aea9b0b80",
+    "provider": "codex",
+    "slug": "personal",
+    "reference": "codex/personal",
+    "home": "/example/vault/codex/personal",
+    "env": {"CODEX_HOME": "/example/vault/codex/personal"},
+    "quota": {"windows": [], "credits": {"balance": 8.5, "unlimited": false}}
+  }
+]

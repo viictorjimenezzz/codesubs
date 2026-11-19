@@ -1,0 +1,25 @@
+[package]
+name = "subscription-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Manage multiple Codex and Claude Code subscription accounts"
+
+[dependencies]
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+fs2 = "0.4"
+libc = "0.2"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tempfile = "3"
+thiserror = "2"
+tokio = { version = "1", features = ["process", "io-util", "time", "sync", "rt", "rt-multi-thread", "macros", "net"] }
+unicode-normalization = "0.1"
+uuid = { version = "1", features = ["serde", "v4"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }

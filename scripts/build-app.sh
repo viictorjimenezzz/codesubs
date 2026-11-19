@@ -1,23 +1,26 @@
 #!/bin/zsh
 set -euo pipefail
-
 project_dir="${0:A:h:h}"
+app_dir="$project_dir/apps/macos"
 app_name="Subscription Manager"
-executable_name="subscription-manager"
+executable_name="subscription-manager-app"
 bundle_dir="$project_dir/dist/$app_name.app"
-icon_source="$project_dir/Resources/Assets/app-icon.png"
+icon_source="$app_dir/Resources/Assets/app-icon.png"
 icon_work_dir="$(mktemp -d /tmp/subscription-manager-icon.XXXXXX)"
 iconset_dir="$icon_work_dir/AppIcon.iconset"
 trap 'rm -rf "$icon_work_dir"' EXIT
 
-cd "$project_dir"
-swift build -c release
-
+cli_binary="$("$project_dir/scripts/build-cli.sh")"
+swift build --package-path "$app_dir" -c release
+swift_bin_dir="$(swift build --package-path "$app_dir" -c release --show-bin-path)"
 rm -rf "$bundle_dir"
-mkdir -p "$bundle_dir/Contents/MacOS" "$bundle_dir/Contents/Resources"
-cp "$project_dir/.build/release/$executable_name" "$bundle_dir/Contents/MacOS/$executable_name"
-cp "$project_dir/Resources/Info.plist" "$bundle_dir/Contents/Info.plist"
-cp -R "$project_dir/Resources/Assets" "$bundle_dir/Contents/Resources/Assets"
+mkdir -p "$bundle_dir/Contents/MacOS" "$bundle_dir/Contents/Helpers" "$bundle_dir/Contents/Resources"
+cp "$swift_bin_dir/$executable_name" "$bundle_dir/Contents/MacOS/$executable_name"
+cp "$cli_binary" "$bundle_dir/Contents/Helpers/subscription-manager"
+cp "$app_dir/Resources/Info.plist" "$bundle_dir/Contents/Info.plist"
+cli_version="$("$cli_binary" version)"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $cli_version" "$bundle_dir/Contents/Info.plist"
+cp -R "$app_dir/Resources/Assets" "$bundle_dir/Contents/Resources/Assets"
 
 mkdir -p "$iconset_dir"
 for size in 16 32 128 256 512; do
@@ -26,7 +29,7 @@ for size in 16 32 128 256 512; do
   sips -z "$double_size" "$double_size" "$icon_source" --out "$iconset_dir/icon_${size}x${size}@2x.png" >/dev/null
 done
 iconutil -c icns "$iconset_dir" -o "$bundle_dir/Contents/Resources/AppIcon.icns"
-chmod +x "$bundle_dir/Contents/MacOS/$executable_name"
-
+chmod +x "$bundle_dir/Contents/MacOS/$executable_name" "$bundle_dir/Contents/Helpers/subscription-manager"
+codesign --force --sign - "$bundle_dir/Contents/Helpers/subscription-manager"
 codesign --force --deep --sign - "$bundle_dir"
-echo "$bundle_dir"
+printf '%s\n' "$bundle_dir"

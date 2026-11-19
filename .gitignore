@@ -4,3 +4,7 @@
 /.swiftpm
 *.xcuserstate
 
+
+/target
+/apps/macos/.build
+/apps/macos/.swiftpm
