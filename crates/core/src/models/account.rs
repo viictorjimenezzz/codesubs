@@ -6,10 +6,9 @@ use uuid::Uuid;
 
 use crate::{Error, QuotaSnapshot, Result};
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Provider {
-    #[default]
     Codex,
     Claude,
 }
@@ -72,9 +71,7 @@ impl FromStr for Provider {
 #[serde(rename_all = "camelCase")]
 pub struct AccountRecord {
     pub id: Uuid,
-    #[serde(default)]
     pub provider: Provider,
-    #[serde(default)]
     pub slug: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,

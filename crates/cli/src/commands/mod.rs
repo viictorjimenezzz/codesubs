@@ -129,10 +129,15 @@ pub async fn run(args: Args) -> Result<(), Failure> {
         }
         return Ok(());
     }
-    let mut config = ManagerConfig::from_environment()?;
-    if let Some(home) = args.home {
-        config = ManagerConfig::new(home, config.user_home)?;
-    }
+    let config = match args.home {
+        Some(vault_root) => {
+            let user_home = std::env::home_dir().ok_or_else(|| {
+                Failure::invalid("could not locate the current user's home directory")
+            })?;
+            ManagerConfig::new(vault_root, user_home)?
+        }
+        None => ManagerConfig::from_environment()?,
+    };
     let manager = Codesubs::new(config)?;
     match args.command {
         Command::List { provider } => {

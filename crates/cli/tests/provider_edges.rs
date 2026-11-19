@@ -38,13 +38,13 @@ impl Scratch {
         let mut command = Command::new(env!("CARGO_BIN_EXE_codesubs"));
         command
             .env("HOME", &self.user)
-            .env("SUBSCRIPTION_MANAGER_HOME", &self.vault);
+            .env("CODESUBS_HOME", &self.vault);
         command
     }
 
     fn seed_claude(&self) {
         let manifest = json!({
-            "version": 2,
+            "version": 3,
             "accounts": [{
                 "id": "0a07e658-1bde-4ee0-b802-ae0aea9b0b7f",
                 "provider": "claude",
@@ -59,8 +59,8 @@ impl Scratch {
         write_executable(&fixture, CODEX_FIXTURE);
         let mut command = tokio::process::Command::from(self.cli());
         command
-            .env("SUBSCRIPTION_MANAGER_CODEX_EXECUTABLE", &fixture)
-            .env("SUBSCRIPTION_MANAGER_TEST_CONTROL", &self.control)
+            .env("CODESUBS_CODEX_EXECUTABLE", &fixture)
+            .env("CODESUBS_TEST_CONTROL", &self.control)
             .args(["add", "codex", "--slug", slug, "--json-events"])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -266,7 +266,7 @@ while IFS= read -r request; do
         *'"method":"initialized"'*) ;;
         *'"method":"account/login/start"'*)
             attempt=0
-            while [ ! -e "$SUBSCRIPTION_MANAGER_TEST_CONTROL/emit-login" ]; do
+            while [ ! -e "$CODESUBS_TEST_CONTROL/emit-login" ]; do
                 [ "$attempt" -lt 100 ] || exit 13
                 /bin/sleep 0.025
                 attempt=$((attempt + 1))
@@ -275,7 +275,7 @@ while IFS= read -r request; do
             printf '{"id":%s,"result":{"loginId":"fixture-login","authUrl":"https://example.test/login"}}\n' "$id"
             ;;
         *'"method":"account/login/cancel"'*'"loginId":"fixture-login"'*)
-            printf 'received\n' > "$SUBSCRIPTION_MANAGER_TEST_CONTROL/cancelled"
+            printf 'received\n' > "$CODESUBS_TEST_CONTROL/cancelled"
             printf '{"id":%s,"result":{"status":"canceled"}}\n' "$id"
             ;;
         *) exit 12 ;;

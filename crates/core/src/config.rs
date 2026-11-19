@@ -1,5 +1,5 @@
 use std::{
-    env,
+    env, fs, io,
     path::{Component, Path, PathBuf},
 };
 
@@ -11,7 +11,6 @@ use crate::{Error, Result};
 pub struct ManagerConfig {
     pub vault_root: PathBuf,
     pub user_home: PathBuf,
-    pub(crate) migrate_legacy: bool,
 }
 
 impl ManagerConfig {
@@ -31,7 +30,6 @@ impl ManagerConfig {
         Ok(Self {
             vault_root,
             user_home,
-            migrate_legacy: false,
         })
     }
 
@@ -39,29 +37,48 @@ impl ManagerConfig {
         let home = absolute(&env::home_dir().ok_or_else(|| {
             Error::InvalidInput("could not locate the current user's home directory".into())
         })?)?;
-        let override_root =
-            env::var_os("SUBSCRIPTION_MANAGER_HOME").filter(|root| !root.is_empty());
-        let vault_root = override_root.as_ref().map(PathBuf::from).map_or_else(
-            || {
-                let current = home.join(".subscription-manager");
-                let previous = home.join(".quota-manager");
-                if !current.join("accounts.json").exists()
-                    && previous.join("accounts.json").exists()
-                {
-                    previous
-                } else {
-                    current
+        let vault_root = match env::var_os("CODESUBS_HOME").filter(|root| !root.is_empty()) {
+            Some(path) => {
+                let path = PathBuf::from(path);
+                match path.strip_prefix("~") {
+                    Ok(suffix) => home.join(suffix),
+                    Err(_) => path,
                 }
-            },
-            |path| {
-                path.strip_prefix("~")
-                    .map_or_else(|_| path.clone(), |suffix| home.join(suffix))
-            },
-        );
-        let mut config = Self::new(vault_root, home)?;
-        config.migrate_legacy = override_root.is_none();
-        Ok(config)
+            }
+            None => configured_root(&home)?.unwrap_or_else(|| home.join(".codesubs")),
+        };
+        Self::new(vault_root, home)
     }
+}
+
+fn configured_root(home: &Path) -> Result<Option<PathBuf>> {
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase", deny_unknown_fields)]
+    struct ConfigFile {
+        vault_root: PathBuf,
+    }
+
+    let path = home.join(".config/codesubs/config.json");
+    let content = match fs::read(&path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error.into()),
+    };
+    if content.iter().find(|byte| !byte.is_ascii_whitespace()) != Some(&b'{') {
+        return Err(Error::InvalidInput(format!(
+            "{} must contain a JSON object",
+            path.display()
+        )));
+    }
+    let config: ConfigFile = serde_json::from_slice(&content)
+        .map_err(|error| Error::InvalidInput(format!("invalid {}: {error}", path.display())))?;
+    if !config.vault_root.is_absolute() {
+        return Err(Error::InvalidInput(format!(
+            "vaultRoot in {} must be absolute",
+            path.display()
+        )));
+    }
+    Ok(Some(config.vault_root))
 }
 
 fn absolute(path: &Path) -> Result<PathBuf> {
@@ -81,4 +98,36 @@ fn absolute(path: &Path) -> Result<PathBuf> {
         }
     }
     Ok(normalized)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn optional_config_requires_an_absolute_path_and_known_fields() {
+        let home = tempfile::tempdir().unwrap();
+        assert!(configured_root(home.path()).unwrap().is_none());
+
+        let path = home.path().join(".config/codesubs/config.json");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, r#"{"vaultRoot":"/tmp/a vault"}"#).unwrap();
+        assert_eq!(
+            configured_root(home.path()).unwrap(),
+            Some("/tmp/a vault".into())
+        );
+
+        for content in [
+            r#"{"vaultRoot":"relative"}"#,
+            r#"{"vaultRoot":"/tmp/vault","typo":true}"#,
+            r#"["/tmp/vault"]"#,
+            "{",
+        ] {
+            fs::write(&path, content).unwrap();
+            assert!(matches!(
+                configured_root(home.path()),
+                Err(Error::InvalidInput(_))
+            ));
+        }
+    }
 }

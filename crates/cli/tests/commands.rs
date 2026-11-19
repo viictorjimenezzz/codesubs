@@ -7,14 +7,14 @@ use tempfile::TempDir;
 
 fn run(root: &TempDir, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_codesubs"))
-        .env("SUBSCRIPTION_MANAGER_HOME", root.path())
+        .env("CODESUBS_HOME", root.path())
         .args(args)
         .output()
         .expect("run CLI")
 }
 fn seed(root: &TempDir) {
     fs::write(root.path().join("accounts.json"),serde_json::to_vec(&json!({
-        "version":2,"accounts":[{
+        "version":3,"accounts":[{
             "id":"0A07E658-1BDE-4EE0-B802-AE0AEA9B0B7F","provider":"claude","slug":"work",
             "email":"me@example.com","plan":"max","lastUpdated":"2026-11-18T10:00:00Z",
             "quota":{"windows":[{"kind":"weekly","label":"Week","usedPercent":12,"resetsAt":"2099-01-01T00:00:00Z","windowDurationMinutes":10080}]}
@@ -84,7 +84,7 @@ fn exec_clears_conflicting_auth_and_preserves_exit_status() {
     let root = TempDir::new().unwrap();
     seed(&root);
     let output = Command::new(env!("CARGO_BIN_EXE_codesubs"))
-        .env("SUBSCRIPTION_MANAGER_HOME", root.path())
+        .env("CODESUBS_HOME", root.path())
         .env("ANTHROPIC_API_KEY", "must-be-removed")
         .args([
             "exec",
@@ -167,35 +167,34 @@ fn env_shell_output_quotes_paths_and_removes_overrides() {
 }
 
 #[test]
-fn explicit_home_never_adopts_legacy_accounts() {
+fn explicit_home_overrides_and_isolates_the_environment_vault() {
     let user = TempDir::new().unwrap();
-    let scratch = TempDir::new().unwrap();
-    let legacy = user.path().join("Library/Application Support/CodexQuota");
-    fs::create_dir_all(&legacy).unwrap();
-    fs::write(
-        legacy.join("accounts.json"),
-        "this invalid legacy file must not be read",
-    )
-    .unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_codesubs"))
-        .env_remove("SUBSCRIPTION_MANAGER_HOME")
-        .env("HOME", user.path())
-        .args(["--home", scratch.path().to_str().unwrap(), "list", "--json"])
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(
-        serde_json::from_slice::<Value>(&output.stdout).unwrap(),
-        json!([])
-    );
-    assert_eq!(
-        fs::read_to_string(legacy.join("accounts.json")).unwrap(),
-        "this invalid legacy file must not be read"
-    );
+    let environment_vault = TempDir::new().unwrap();
+    let explicit_vault = TempDir::new().unwrap();
+    seed(&environment_vault);
+    let environment_manifest = environment_vault.path().join("accounts.json");
+    let original = fs::read(&environment_manifest).unwrap();
+
+    for configured_root in [environment_vault.path(), user.path()] {
+        let output = Command::new(env!("CARGO_BIN_EXE_codesubs"))
+            .env("CODESUBS_HOME", configured_root)
+            .env("HOME", user.path())
+            .arg("--home")
+            .arg(explicit_vault.path())
+            .args(["list", "--json"])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(
+            serde_json::from_slice::<Value>(&output.stdout).unwrap(),
+            json!([])
+        );
+    }
+    assert_eq!(fs::read(environment_manifest).unwrap(), original);
 }
 
 #[test]
@@ -208,7 +207,7 @@ fn shared_swift_fixture_round_trips_and_expired_reset_totals_update_without_refr
     accounts[0]["env"]["CLAUDE_CONFIG_DIR"] = json!(root.path().join("claude/work"));
     fs::write(
         root.path().join("accounts.json"),
-        serde_json::to_vec(&json!({"version":2,"accounts":accounts})).unwrap(),
+        serde_json::to_vec(&json!({"version":3,"accounts":accounts})).unwrap(),
     )
     .unwrap();
     let before = fs::read(root.path().join("accounts.json")).unwrap();
@@ -245,11 +244,11 @@ fn standalone_codex_lifecycle_uses_one_core_without_the_app() {
     fs::set_permissions(&executable, fs::Permissions::from_mode(0o700)).unwrap();
     let call = |args: &[&str]| {
         let output = Command::new(env!("CARGO_BIN_EXE_codesubs"))
-            .env("SUBSCRIPTION_MANAGER_HOME", &vault)
+            .env("CODESUBS_HOME", &vault)
             .env("HOME", root.path().join("user-home"))
-            .env("SUBSCRIPTION_MANAGER_CODEX_EXECUTABLE", &executable)
+            .env("CODESUBS_CODEX_EXECUTABLE", &executable)
             .env(
-                "SUBSCRIPTION_MANAGER_CLAUDE_EXECUTABLE",
+                "CODESUBS_CLAUDE_EXECUTABLE",
                 root.path().join("missing-claude"),
             )
             .args(args)
@@ -295,4 +294,54 @@ fn standalone_codex_lifecycle_uses_one_core_without_the_app() {
     assert_eq!(removed["removed"], "codex/personal");
     assert!(!vault.join("codex/personal").exists());
     assert_eq!(call(&["list", "--json"]), json!([]));
+}
+
+#[test]
+fn current_config_file_env_and_explicit_home_have_clear_precedence() {
+    let user = TempDir::new().unwrap();
+    let configured = TempDir::new().unwrap();
+    let environment = TempDir::new().unwrap();
+    let explicit = TempDir::new().unwrap();
+    let config = user.path().join(".config/codesubs/config.json");
+    fs::create_dir_all(config.parent().unwrap()).unwrap();
+    fs::write(
+        &config,
+        serde_json::to_vec(&json!({"vaultRoot":configured.path()})).unwrap(),
+    )
+    .unwrap();
+    let invoke = |env_root: Option<&std::path::Path>, args: &[&str]| {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_codesubs"));
+        command.env("HOME", user.path()).env_remove("CODESUBS_HOME");
+        if let Some(path) = env_root {
+            command.env("CODESUBS_HOME", path);
+        }
+        let output = command.args(args).output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        serde_json::from_slice::<Value>(&output.stdout).unwrap()
+    };
+    assert_eq!(
+        invoke(None, &["info", "--json"])["root"],
+        json!(configured.path())
+    );
+    assert_eq!(
+        invoke(Some(environment.path()), &["info", "--json"])["root"],
+        json!(environment.path())
+    );
+    fs::write(config, "invalid current configuration").unwrap();
+    assert_eq!(
+        invoke(
+            None,
+            &[
+                "--home",
+                explicit.path().to_str().unwrap(),
+                "info",
+                "--json"
+            ]
+        )["root"],
+        json!(explicit.path())
+    );
 }

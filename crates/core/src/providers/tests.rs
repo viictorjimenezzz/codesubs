@@ -283,10 +283,10 @@ fn codex_prefers_named_limit_and_keeps_unknown_reset_outcome() {
 }
 
 #[test]
-fn claude_keychain_identity_and_ansi_url_match_existing_profiles() {
+fn claude_keychain_identity_and_ansi_url_match_provider_behavior() {
     assert_eq!(
-        keychain::service_name("/Users/test/.subscription-manager/claude/work"),
-        "Claude Code-credentials-d3de09b1"
+        keychain::service_name("/Users/test/.codesubs/claude/work"),
+        "Claude Code-credentials-e5ffe7f2"
     );
     assert_eq!(
         keychain::service_name("/tmp/é"),

@@ -5,7 +5,7 @@
 # never logs in, logs out, or refreshes tokens itself.
 set -euo pipefail
 
-cli="${SUBSCRIPTION_MANAGER_CLI:-codesubs}"
+cli="${CODESUBS_CLI:-codesubs}"
 command -v "$cli" >/dev/null || { echo "codesubs is not on PATH; run ./scripts/install-cli.sh"; exit 1; }
 
 "$cli" list --json | CLI="$cli" python3 /dev/fd/3 3<<'PYTHON'

@@ -13,7 +13,7 @@ use crate::{
     services::selection, storage::Repository,
 };
 
-/// A reusable subscription manager. Separate instances and CLI processes
+/// A reusable account manager. Separate instances and CLI processes
 /// coordinate updates through stable locks inside the vault.
 #[derive(Clone)]
 pub struct Codesubs {
@@ -31,9 +31,7 @@ impl Codesubs {
         config: ManagerConfig,
         backends: impl IntoIterator<Item = Arc<dyn ProviderBackend>>,
     ) -> Result<Self> {
-        let migrate_legacy = config.migrate_legacy;
-        let mut config = ManagerConfig::new(config.vault_root, config.user_home)?;
-        config.migrate_legacy = migrate_legacy;
+        let config = ManagerConfig::new(config.vault_root, config.user_home)?;
         let backends: Vec<_> = backends.into_iter().collect();
         for provider in Provider::ALL {
             if backends
@@ -76,7 +74,6 @@ impl Codesubs {
     }
 
     pub async fn list(&self) -> Result<Vec<AccountRecord>> {
-        self.repository.migrate_legacy()?;
         Ok(self.repository.snapshot()?.unwrap_or_default().accounts)
     }
 

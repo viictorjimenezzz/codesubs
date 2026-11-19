@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{AccountRecord, Error, ManagerConfig, Provider, Result};
 
-use super::{Manifest, homes, locks, migrations, shared_config};
+use super::{Manifest, homes, locks, shared_config};
 
 #[derive(Clone)]
 pub(crate) struct Repository {
@@ -95,27 +95,6 @@ impl Repository {
         Ok(value)
     }
 
-    pub(crate) fn migrate_legacy(&self) -> Result<()> {
-        if !self.config.migrate_legacy || homes::exists(&self.manifest_path())? {
-            return Ok(());
-        }
-        let legacy = self
-            .config
-            .user_home
-            .join("Library/Application Support/CodexQuota");
-        if !homes::exists(&legacy.join("accounts.json"))?
-            && !homes::exists(&migrations::journal_path(self))?
-        {
-            return Ok(());
-        }
-        self.initialize()?;
-        let _lock = self.manifest_lock()?;
-        if self.read_unlocked()?.is_none() {
-            migrations::migrate_codex(self, &legacy)?;
-        }
-        Ok(())
-    }
-
     pub(crate) async fn account_lock(&self, id: Uuid) -> Result<File> {
         self.initialize()?;
         locks::lock_async(&self.root().join(".locks").join(format!("account-{id}"))).await
@@ -165,11 +144,9 @@ impl Repository {
     ) -> Result<()> {
         let home = self.home(account.provider, &account.slug);
         homes::create_account_directory(&home)?;
-        for name in [".subscription-manager-links", ".quota-manager-links"] {
-            let ledger = backup.join(name);
-            if homes::exists(&ledger)? && fs::symlink_metadata(&ledger)?.is_file() {
-                fs::copy(ledger, home.join(name))?;
-            }
+        let ledger = backup.join(shared_config::LINK_LEDGER);
+        if homes::exists(&ledger)? && fs::symlink_metadata(&ledger)?.is_file() {
+            fs::copy(ledger, home.join(shared_config::LINK_LEDGER))?;
         }
         self.link_shared(account)
     }

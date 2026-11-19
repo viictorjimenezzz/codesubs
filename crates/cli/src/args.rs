@@ -8,7 +8,7 @@ use std::{ffi::OsString, path::PathBuf};
     about = "Manage subscription accounts independently of the macOS app"
 )]
 pub struct Args {
-    /// Vault directory (also SUBSCRIPTION_MANAGER_HOME).
+    /// Vault directory (also CODESUBS_HOME).
     #[arg(long, global = true)]
     pub home: Option<PathBuf>,
     /// Emit documented machine-readable output.
@@ -27,7 +27,6 @@ pub struct Args {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Show cached accounts and quota.
-    #[command(alias = "ls")]
     List { provider: Option<String> },
     /// Read current provider quota; without an account refresh all accounts.
     Refresh { account: Option<String> },

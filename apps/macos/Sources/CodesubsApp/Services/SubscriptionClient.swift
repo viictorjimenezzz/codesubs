@@ -9,7 +9,7 @@ struct SubscriptionClient: Sendable {
         environment: [String: String] = ProcessInfo.processInfo.environment,
         commandTimeout: TimeInterval = 15
     ) {
-        if let override = environment["SUBSCRIPTION_MANAGER_CLI"], !override.isEmpty {
+        if let override = environment["CODESUBS_CLI"], !override.isEmpty {
             executable = URL(fileURLWithPath: override)
         } else {
             executable = bundle.bundleURL.appendingPathComponent("Contents/Helpers/codesubs")

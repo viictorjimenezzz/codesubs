@@ -685,7 +685,7 @@ async fn a_removed_shared_setting_link_stays_opted_out() {
 }
 
 #[tokio::test]
-async fn swift_manifest_paths_and_values_survive_a_current_write() {
+async fn manifest_paths_and_values_survive_a_current_write() {
     let scratch = TempDir::new().unwrap();
     let backend = Arc::new(FakeProvider::new(Provider::Claude));
     let manager = fake_manager(scratch.path(), backend.clone());
@@ -695,7 +695,7 @@ async fn swift_manifest_paths_and_values_survive_a_current_write() {
     fs::create_dir_all(&home).unwrap();
     let id = Uuid::new_v4();
     let original = serde_json::json!({
-        "version": 2,
+        "version": 3,
         "root": vault,
         "accounts": [{
             "id": id.to_string().to_uppercase(), "provider": "claude", "slug": "work",
@@ -730,18 +730,20 @@ async fn swift_manifest_paths_and_values_survive_a_current_write() {
     let timestamp = updated["accounts"][0]["lastUpdated"].as_str().unwrap();
     assert!(timestamp.ends_with('Z') && !timestamp.contains('.'));
 
-    let mut future = original;
-    future["version"] = 42.into();
-    let future = future.to_string();
-    fs::write(&path, &future).unwrap();
-    let error = manager
-        .add(
-            Provider::Claude,
-            options("future", "future@example.test"),
-            progress(),
-        )
-        .await
-        .unwrap_err();
-    assert!(matches!(error, Error::UnsupportedManifest(42)));
-    assert_eq!(fs::read_to_string(&path).unwrap(), future);
+    for version in [1, 2, 42] {
+        let mut unsupported = original.clone();
+        unsupported["version"] = version.into();
+        let unsupported = unsupported.to_string();
+        fs::write(&path, &unsupported).unwrap();
+        let error = manager
+            .add(
+                Provider::Claude,
+                options("another", "another@example.test"),
+                progress(),
+            )
+            .await
+            .unwrap_err();
+        assert!(matches!(error, Error::UnsupportedManifest(value) if value == version));
+        assert_eq!(fs::read_to_string(&path).unwrap(), unsupported);
+    }
 }

@@ -2,10 +2,10 @@
 # Shared installer helpers; sourcing has no process or filesystem side effects.
 app_pids() {
   local executable="$1" match_cli_name="${2:-0}"
-  ps -axwwo pid=,comm= | SM_INSTALL_EXECUTABLE="$executable" SM_INSTALL_MATCH_CLI_NAME="$match_cli_name" python3 -c '
+  ps -axwwo pid=,comm= | CODESUBS_INSTALL_EXECUTABLE="$executable" CODESUBS_INSTALL_MATCH_CLI_NAME="$match_cli_name" python3 -c '
 import os, sys
-expected = os.path.abspath(os.environ["SM_INSTALL_EXECUTABLE"])
-match_cli_name = os.environ["SM_INSTALL_MATCH_CLI_NAME"] == "1"
+expected = os.path.abspath(os.environ["CODESUBS_INSTALL_EXECUTABLE"])
+match_cli_name = os.environ["CODESUBS_INSTALL_MATCH_CLI_NAME"] == "1"
 for line in sys.stdin:
     fields = line.strip().split(None, 1)
     if len(fields) != 2:

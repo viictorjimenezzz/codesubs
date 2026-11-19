@@ -2,12 +2,14 @@ use std::{fs, path::Path};
 
 use crate::{
     Codesubs, CredentialLocation, Error, Provider, Result,
-    storage::{Journal, Operation, exists, move_directory, remove_directory, require_directory},
+    storage::{
+        Journal, LINK_LEDGER, Operation, exists, move_directory, remove_directory,
+        require_directory,
+    },
 };
 
 impl Codesubs {
     pub(crate) async fn recover_pending(&self) -> Result<()> {
-        self.repository.migrate_legacy()?;
         // Validate the vault before recovery can move any credentials.
         self.repository.snapshot()?;
         for id in Journal::pending(&self.repository)? {
@@ -160,17 +162,12 @@ impl Codesubs {
 
 fn merge_account_state(source: &Path, destination: &Path, provider: Provider) -> Result<()> {
     let credentials: &[&str] = match provider {
-        Provider::Codex => &[
-            "auth.json",
-            ".subscription-manager-links",
-            ".quota-manager-links",
-        ],
+        Provider::Codex => &["auth.json", LINK_LEDGER],
         Provider::Claude => &[
             ".credentials.json",
             ".claude.json",
             "credentials.json",
-            ".subscription-manager-links",
-            ".quota-manager-links",
+            LINK_LEDGER,
         ],
     };
     merge_directory(source, destination, credentials)

@@ -3,7 +3,6 @@ mod journal;
 mod homes;
 mod locks;
 mod manifest;
-mod migrations;
 mod repository;
 mod shared_config;
 
@@ -12,6 +11,7 @@ pub(crate) use journal::{Journal, Operation};
 
 pub(crate) use manifest::Manifest;
 pub(crate) use repository::Repository;
+pub(crate) use shared_config::LINK_LEDGER;
 
 pub(crate) fn validate_slug(slug: &str) -> crate::Result<()> {
     if slug.is_empty() || sanitize_slug(slug) != slug {

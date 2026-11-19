@@ -14,8 +14,8 @@ use crate::{Error, Provider, Result};
 
 pub fn locate_executable(provider: Provider) -> Option<PathBuf> {
     let (name, override_key) = match provider {
-        Provider::Codex => ("codex", "SUBSCRIPTION_MANAGER_CODEX_EXECUTABLE"),
-        Provider::Claude => ("claude", "SUBSCRIPTION_MANAGER_CLAUDE_EXECUTABLE"),
+        Provider::Codex => ("codex", "CODESUBS_CODEX_EXECUTABLE"),
+        Provider::Claude => ("claude", "CODESUBS_CLAUDE_EXECUTABLE"),
     };
     if let Some(override_path) = env::var_os(override_key) {
         let path = PathBuf::from(override_path);

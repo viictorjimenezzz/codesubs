@@ -16,6 +16,3 @@ pub use manager::{Codesubs, DoctorReport, ProviderDiagnostic};
 pub use models::*;
 pub use providers::{CredentialLocation, ProviderBackend};
 pub use services::selection::select_account;
-
-/// Compatibility name for the account manager.
-pub type SubscriptionManager = Codesubs;

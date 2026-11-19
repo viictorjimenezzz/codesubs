@@ -2,6 +2,8 @@ use std::{collections::BTreeSet, fs, io, io::Write, os::unix::fs::symlink, path:
 
 use crate::{Provider, Result};
 
+pub(crate) const LINK_LEDGER: &str = ".codesubs-links";
+
 pub(super) fn link(provider: Provider, home: &Path, source: &Path) -> Result<()> {
     let items: &[&str] = match provider {
         Provider::Codex => &["AGENTS.md", "prompts", "rules", "skills", "hooks.json"],
@@ -17,11 +19,9 @@ pub(super) fn link(provider: Provider, home: &Path, source: &Path) -> Result<()>
             "keybindings.json",
         ],
     };
-    let ledger = home.join(".subscription-manager-links");
-    let old_ledger = home.join(".quota-manager-links");
+    let ledger = home.join(LINK_LEDGER);
     let existing = read_ledger(&ledger)?;
-    let previous = read_ledger(&old_ledger)?;
-    let mut handled: BTreeSet<&str> = existing.lines().chain(previous.lines()).collect();
+    let mut handled: BTreeSet<&str> = existing.lines().collect();
 
     for item in items {
         if !handled.contains(item) {
@@ -42,9 +42,6 @@ pub(super) fn link(provider: Provider, home: &Path, source: &Path) -> Result<()>
         let mut stage = tempfile::NamedTempFile::new_in(home)?;
         stage.write_all(content.as_bytes())?;
         stage.persist(&ledger).map_err(|error| error.error)?;
-    }
-    if super::homes::exists(&old_ledger)? {
-        fs::remove_file(old_ledger)?;
     }
     Ok(())
 }

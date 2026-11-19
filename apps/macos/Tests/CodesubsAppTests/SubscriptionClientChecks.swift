@@ -196,7 +196,7 @@ private final class FakeCLI {
         try ("#!/bin/sh\n" + script(root) + "\n").write(to: executable, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
         client = SubscriptionClient(
-            environment: ["SUBSCRIPTION_MANAGER_CLI": executable.path],
+            environment: ["CODESUBS_CLI": executable.path],
             commandTimeout: timeout
         )
     }

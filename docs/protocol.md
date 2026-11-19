@@ -1,13 +1,13 @@
 # CLI protocol v1
 
-The macOS app launches its bundled `Contents/Helpers/codesubs` directly. Scripts may use the independently installed binary. Arguments are passed as an array; no shell is required. `--home PATH` or `SUBSCRIPTION_MANAGER_HOME` selects a scratch/alternate vault.
+The macOS app launches its bundled `Contents/Helpers/codesubs` directly. Scripts may use the independently installed binary. Arguments are passed as an array; no shell is required. `--home PATH` or `CODESUBS_HOME` selects a scratch/alternate vault.
 
 Commands accept `--json --protocol-version 1`. Unknown protocol versions fail. Successful JSON commands emit one JSON value on stdout. Errors emit `{ "protocolVersion": 1, "error": { "code": "...", "message": "..." } }` on stderr with a nonzero status. Diagnostics never mix into JSON stdout. `exec` is an exception: its streams and status belong to the child.
 
-- `list [codex|claude] --json`: preserves the existing top-level array. Each entry contains `id`, `provider`, `slug`, optional `email`, `plan`, `quota`, `lastUpdated`, plus `reference`, exact `home`, and `env`. Available percentage fields are derived when quota exists. Times are ISO-8601. Snapshots are cached observations; elapsed reset projections are not newly observed quota.
+- `list [codex|claude] --json`: returns an array. Each entry contains `id`, `provider`, `slug`, optional `email`, `plan`, `quota`, `lastUpdated`, plus `reference`, exact `home`, and `env`. Available percentage fields are derived when quota exists. Times are ISO-8601. Snapshots are cached observations; elapsed reset projections are not newly observed quota.
 - `info --json`: `{protocolVersion, version, root, guidePath, addGuidePath}`.
 - `refresh [account] --json`: `{protocolVersion, accounts: [...], failures: [{reference, code, message}]}`. Partial account failures are returned with exit 0; callers must inspect `failures`. Command-level failures use stderr and a nonzero exit.
-- `pick provider [--min N] [--max-age SECONDS] [--refresh] --json`: `{protocolVersion, account, availablePercent, freshness, projected}`. Without `--json`, prints only `provider/slug`. Explicit max age requires a fresh observation; the legacy default permits stale fallback.
+- `pick provider [--min N] [--max-age SECONDS] [--refresh] --json`: `{protocolVersion, account, availablePercent, freshness, projected}`. Without `--json`, prints only `provider/slug`. Explicit max age requires a fresh observation; the default permits cached fallback.
 - `env account --json`: `{protocolVersion, home, set: {...}, unset: [...]}`. Without JSON, `--sh` or `--fish` selects executable shell lines.
 - `path account --json`: `{protocolVersion, home}`.
 - `rename account slug --json`: `{protocolVersion, account}`.
@@ -27,7 +27,7 @@ Commands accept `--json --protocol-version 1`. Unknown protocol versions fail. S
 
 The `account` example above is abbreviated; successful results contain the full account DTO. `reference` may be null during new-account onboarding. A terminal event with `type: "error"` and `code`/`message` accompanies errors on stderr. Login URLs are sensitive session data; do not persist event logs.
 
-Submit a fallback code to the live login with `add-code --stdin --slug work --json`, passing the code on stdin. The positional code form remains compatible with existing scripts. Do not treat `loginID` as a durable/resumable session handle. SIGINT/SIGTERM cancel an owned login and allow rollback before exit.
+Submit a fallback code to the live login with `add-code --stdin --slug work --json`, passing the code on stdin. A code can also be passed as a positional argument. Do not treat `loginID` as a durable/resumable session handle. SIGINT/SIGTERM cancel an owned login and allow rollback before exit.
 
 ## Exit statuses
 
@@ -38,4 +38,4 @@ Submit a fallback code to the live login with `add-code --stdin --slug work --js
 - `127`: executable could not be launched/found.
 - `130`: cancelled login.
 
-`exec` replaces the CLI on Unix and preserves the child's exit/signal behavior. Output schemas are distinct from the on-disk manifest and provider wire formats; additions should remain backwards compatible within v1.
+`exec` replaces the CLI on Unix and preserves the child's exit/signal behavior. Output schemas are distinct from the on-disk manifest and provider wire formats; version 1 defines the current output contract.

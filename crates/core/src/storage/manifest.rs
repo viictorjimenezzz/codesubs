@@ -45,31 +45,14 @@ impl Default for Manifest {
 
 impl Manifest {
     pub fn read(file: File, repository: &Repository) -> Result<Self> {
-        let mut raw: Value = serde_json::from_reader(file).map_err(corrupt)?;
+        let raw: Value = serde_json::from_reader(file).map_err(corrupt)?;
         let version = raw
             .get("version")
             .and_then(Value::as_u64)
             .and_then(|number| u32::try_from(number).ok())
             .ok_or_else(|| Error::CorruptManifest("missing or invalid version".into()))?;
-        if !(1..=CURRENT_VERSION).contains(&version) {
+        if version != CURRENT_VERSION {
             return Err(Error::UnsupportedManifest(version));
-        }
-        if let Some(entries) = raw.get_mut("accounts").and_then(Value::as_array_mut) {
-            for entry in entries {
-                if version >= 2 && (entry.get("provider").is_none() || entry.get("slug").is_none())
-                {
-                    return Err(Error::CorruptManifest(
-                        "account is missing its provider or slug".into(),
-                    ));
-                }
-                if version == 1
-                    && entry
-                        .get("quota")
-                        .is_some_and(|quota| quota.is_object() && quota.get("windows").is_none())
-                {
-                    entry.as_object_mut().unwrap().remove("quota");
-                }
-            }
         }
         let manifest = Self::deserialize(&raw).map_err(corrupt)?;
         manifest.validate()?;
@@ -106,8 +89,6 @@ impl Manifest {
         let mut ids = HashSet::new();
         let mut paths = HashSet::new();
         for account in &self.accounts {
-            // Older Swift builds could append a numeric suffix to a full
-            // 48-character email slug. Preserve those existing paths.
             let valid_path = !account.slug.is_empty()
                 && account.slug.len() <= 255
                 && account

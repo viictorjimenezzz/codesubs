@@ -20,8 +20,8 @@ codesubs doctor --json
 codesubs info --json
 ```
 
-Accounts resolve by `provider/slug`, unique slug, or email. Refresh works with the app closed. `list` is cached; default `pick` retains legacy stale fallback, while `--max-age` and `--refresh` require fresh data. Choosing an account does not reserve quota.
+Accounts resolve by `provider/slug`, unique slug, or email. Refresh works with the app closed. `list` is cached; default `pick` allows cached fallback, while `--max-age` and `--refresh` require fresh data. Choosing an account does not reserve quota.
 
-All supported writers share interprocess locks. Stop older app/CLI versions before writer cutover. Provider sessions started outside the manager do not participate in its locks. Preserve exact paths and never copy provider credentials. Moving the default login requires explicitly passing `add --from-default`; it changes which login the ordinary provider command uses.
+All supported writers share interprocess locks. Provider sessions started outside the manager do not participate in its locks. Preserve exact paths and never copy provider credentials. Moving the default login requires explicitly passing `add --from-default`; it changes which login the ordinary provider command uses.
 
 For programmatic consumers see [protocol.md](protocol.md). Use `--home /absolute/scratch/path` to test independently of real credentials. Offline tests use scratch stores/fake providers; live provider checks are explicitly opt-in.
