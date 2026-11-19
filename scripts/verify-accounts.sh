@@ -1,12 +1,12 @@
 #!/bin/zsh
 # Checks every stored account the way an agent would use it: the folder is
-# selected through `subscription-manager exec`, the provider CLI must see the expected
+# selected through `codesubs exec`, the provider CLI must see the expected
 # login there, and the app must have read fresh quota for it. Read-only: it
 # never logs in, logs out, or refreshes tokens itself.
 set -euo pipefail
 
-cli="${SUBSCRIPTION_MANAGER_CLI:-subscription-manager}"
-command -v "$cli" >/dev/null || { echo "subscription-manager is not on PATH; run ./scripts/install.sh"; exit 1; }
+cli="${SUBSCRIPTION_MANAGER_CLI:-codesubs}"
+command -v "$cli" >/dev/null || { echo "codesubs is not on PATH; run ./scripts/install-cli.sh"; exit 1; }
 
 "$cli" list --json | CLI="$cli" python3 /dev/fd/3 3<<'PYTHON'
 import json, os, subprocess, sys

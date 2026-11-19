@@ -1,9 +1,9 @@
 [package]
-name = "subscription-core"
+name = "codesubs-core"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Manage multiple Codex and Claude Code subscription accounts"
+description = "The codesubs library for managing Codex and Claude Code subscription accounts"
 
 [dependencies]
 async-trait = "0.1"

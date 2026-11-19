@@ -1,8 +1,8 @@
 use chrono::Utc;
+use codesubs_core::{AccountRecord, Codesubs};
 use serde_json::{Value, json};
-use subscription_core::{AccountRecord, SubscriptionManager};
 
-pub fn account(manager: &SubscriptionManager, record: &AccountRecord) -> Value {
+pub fn account(manager: &Codesubs, record: &AccountRecord) -> Value {
     let now = Utc::now();
     let mut value = serde_json::to_value(record).expect("account serialization");
     let object = value.as_object_mut().expect("account object");

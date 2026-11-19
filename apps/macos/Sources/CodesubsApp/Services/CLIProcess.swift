@@ -13,7 +13,7 @@ final class CLIProcess: @unchecked Sendable {
         case stdout, stderr
     }
 
-    private let queue = DispatchQueue(label: "SubscriptionManager.CLIProcess")
+    private let queue = DispatchQueue(label: "Codesubs.CLIProcess")
     private let process = Process()
     private let pipes: [Output: Pipe] = [.stdout: Pipe(), .stderr: Pipe()]
     private let input: Data?

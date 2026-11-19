@@ -4,14 +4,14 @@ use tokio::sync::watch;
 use uuid::Uuid;
 
 use crate::{
-    AccountRecord, AccountStatus, AddOptions, CredentialLocation, Error, LoginProgress,
-    LoginRequest, Provider, Result, SubscriptionManager,
+    AccountRecord, AccountStatus, AddOptions, Codesubs, CredentialLocation, Error, LoginProgress,
+    LoginRequest, Provider, Result,
     storage::{
         Journal, Manifest, Operation, exists, move_directory, slug_from_email, validate_slug,
     },
 };
 
-impl SubscriptionManager {
+impl Codesubs {
     /// Sign in with a provider CLI, verify identity and register the account.
     pub async fn add(
         &self,

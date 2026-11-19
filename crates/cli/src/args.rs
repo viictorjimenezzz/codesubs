@@ -3,7 +3,7 @@ use std::{ffi::OsString, path::PathBuf};
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "subscription-manager",
+    name = "codesubs",
     version,
     about = "Manage subscription accounts independently of the macOS app"
 )]

@@ -13,7 +13,7 @@ use std::{
 
 use async_trait::async_trait;
 use chrono::{Duration as ChronoDuration, Utc};
-use subscription_core::*;
+use codesubs_core::*;
 use tempfile::TempDir;
 use tokio::sync::{Notify, watch};
 use uuid::Uuid;
@@ -219,9 +219,9 @@ impl ProviderBackend for FakeProvider {
     }
 }
 
-fn fake_manager(root: &Path, provider: Arc<FakeProvider>) -> SubscriptionManager {
+fn fake_manager(root: &Path, provider: Arc<FakeProvider>) -> Codesubs {
     let config = ManagerConfig::new(root.join("vault"), root.join("user")).unwrap();
-    SubscriptionManager::with_backends(config, [provider as Arc<dyn ProviderBackend>]).unwrap()
+    Codesubs::with_backends(config, [provider as Arc<dyn ProviderBackend>]).unwrap()
 }
 
 fn progress() -> LoginProgress {

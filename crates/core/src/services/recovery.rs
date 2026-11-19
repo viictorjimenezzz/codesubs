@@ -1,11 +1,11 @@
 use std::{fs, path::Path};
 
 use crate::{
-    CredentialLocation, Error, Provider, Result, SubscriptionManager,
+    Codesubs, CredentialLocation, Error, Provider, Result,
     storage::{Journal, Operation, exists, move_directory, remove_directory, require_directory},
 };
 
-impl SubscriptionManager {
+impl Codesubs {
     pub(crate) async fn recover_pending(&self) -> Result<()> {
         self.repository.migrate_legacy()?;
         // Validate the vault before recovery can move any credentials.

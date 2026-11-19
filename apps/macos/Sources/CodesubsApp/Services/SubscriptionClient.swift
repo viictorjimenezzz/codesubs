@@ -12,7 +12,7 @@ struct SubscriptionClient: Sendable {
         if let override = environment["SUBSCRIPTION_MANAGER_CLI"], !override.isEmpty {
             executable = URL(fileURLWithPath: override)
         } else {
-            executable = bundle.bundleURL.appendingPathComponent("Contents/Helpers/subscription-manager")
+            executable = bundle.bundleURL.appendingPathComponent("Contents/Helpers/codesubs")
         }
         self.commandTimeout = commandTimeout
     }
@@ -172,12 +172,12 @@ enum SubscriptionClientError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .launchFailed(let reason): return "Could not start subscription-manager. \(reason)"
-        case .timedOut: return "The subscription-manager command timed out."
+        case .launchFailed(let reason): return "Could not start codesubs. \(reason)"
+        case .timedOut: return "The codesubs command timed out."
         case .commandFailed(let status, let detail):
-            return detail.isEmpty ? "Subscription Manager CLI exited with status \(status)." : detail
-        case .invalidResponse: return "Subscription Manager CLI returned an invalid response."
-        case .unsupportedVersion(let version): return "Subscription Manager CLI returned unsupported protocol version \(version)."
+            return detail.isEmpty ? "codesubs exited with status \(status)." : detail
+        case .invalidResponse: return "codesubs returned an invalid response."
+        case .unsupportedVersion(let version): return "codesubs returned unsupported protocol version \(version)."
         }
     }
 }

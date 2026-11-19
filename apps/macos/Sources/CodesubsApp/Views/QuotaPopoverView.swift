@@ -25,7 +25,7 @@ struct QuotaPopoverView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Text("Subscription Manager")
+            Text("Codesubs")
                 .font(.system(size: 13.5, weight: .semibold, design: .rounded))
             Spacer()
             Button {
@@ -158,7 +158,7 @@ struct QuotaPopoverView: View {
                 }
                 .disabled(store.info == nil)
                 Divider()
-                Button("Quit Subscription Manager") { NSApplication.shared.terminate(nil) }
+                Button("Quit Codesubs") { NSApplication.shared.terminate(nil) }
             } label: {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 9, weight: .semibold))

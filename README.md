@@ -1,10 +1,10 @@
-# Subscription Manager
+# Codesubs
 
 A Rust library and standalone CLI for managing **Codex (ChatGPT)** and **Claude Code** subscription accounts, with a native SwiftUI menu-bar app as an optional client. Keep several accounts logged in, read their quota, and select an account for an agent without logging in again.
 
 The Rust core owns account behavior, providers, storage, and locking. The CLI exposes those operations to agents and the macOS app through a documented JSON protocol. See [library usage](docs/library.md), [CLI commands](docs/cli.md), and [the app protocol](docs/protocol.md).
 
-By default, each account lives in its own folder under `~/.subscription-manager`; retained legacy vaults may use `~/.quota-manager`. `subscription-manager info --json` reports the exact root. Ordinary managed-account operations leave default `~/.codex` and `~/.claude` logins alone; `add --from-default` explicitly moves a default login.
+By default, each account lives in its own folder under `~/.subscription-manager`; retained legacy vaults may use `~/.quota-manager`. `codesubs info --json` reports the exact root. Ordinary managed-account operations leave default `~/.codex` and `~/.claude` logins alone; `add --from-default` explicitly moves a default login.
 
 ## Features
 
@@ -13,7 +13,7 @@ By default, each account lives in its own folder under `~/.subscription-manager`
 - Weekly quota, 5-hour session quota and per-model weekly limits, with reset times
 - Green, orange, and red quota bars
 - Automatic refresh every 15 minutes, or on demand
-- A shared credentials folder plus a `subscription-manager` command for agents
+- A shared credentials folder plus a `codesubs` command for agents
 - Native translucent SwiftUI menu-bar window
 - Optional launch at login
 - No analytics and no external service operated by this project
@@ -33,7 +33,9 @@ The provider CLIs are found through the process `PATH` and common install folder
 ./scripts/install.sh
 ```
 
-The script builds and ad-hoc signs the app and bundled Rust helper, installs the app as `~/Applications/Subscription Manager.app`, installs a separate command-line binary at `~/.local/bin/subscription-manager`, and launches the app.
+The script builds and ad-hoc signs the app and bundled Rust helper, installs the app as `~/Applications/Codesubs.app`, installs a separate command-line binary at `~/.local/bin/codesubs`, and launches the app.
+
+The app, repository, and terminal command are named Codesubs (`codesubs`). Installing this version replaces the previous `subscription-manager` command and Subscription Manager app. Existing credential folders retain their exact paths.
 
 For the CLI alone, without the app:
 
@@ -45,27 +47,27 @@ Look for the white Codex icon in the menu bar.
 
 Upgrading from **Quota Manager** or **Codex Quota**: the installer quits and removes the old app and its `quota-manager` command. Existing accounts stay logged in; the core preserves current account paths and handles older layouts as follows:
 
-- An existing Quota Manager `~/.quota-manager` vault is opened in place when the new default vault does not exist, preserving exact Claude Keychain paths. `subscription-manager info --json` reports the selected root.
+- An existing Quota Manager `~/.quota-manager` vault is opened in place when the new default vault does not exist, preserving exact Claude Keychain paths. `codesubs info --json` reports the selected root.
 - Codex Quota's profiles in `~/Library/Application Support/CodexQuota` move into `~/.subscription-manager/codex/`, named after their email addresses.
 
 Re-enable "Launch at login" from the menu afterwards, because the app has a new identity.
 
 ## Adding accounts
 
-Accounts are added by an agent, not from the app. Ask your agent to add one; it follows the `addGuidePath` reported by `subscription-manager info --json`, which boils down to:
+Accounts are added by an agent, not from the app. Ask your agent to add one; it follows the `addGuidePath` reported by `codesubs info --json`, which boils down to:
 
 ```sh
-subscription-manager add claude --email someone@example.com   # prints a sign-in URL
-subscription-manager add-code '<code>'                         # only if Claude shows a code
+codesubs add claude --email someone@example.com   # prints a sign-in URL
+codesubs add-code '<code>'                         # only if Claude shows a code
 ```
 
-Open the URL in a browser logged into that email (or a private window) and approve. The command signs in inside a new folder named after the email (for example `claude/someone-example`), refuses to save a login for any other email, and registers the account; the running app shows it within seconds. With `--from-default` it instead moves the login that plain `codex` or `claude` uses into Subscription Manager.
+Open the URL in a browser logged into that email (or a private window) and approve. The command signs in inside a new folder named after the email (for example `claude/someone-example`), refuses to save a login for any other email, and registers the account; the running app shows it within seconds. With `--from-default` it instead moves the login that plain `codex` or `claude` uses into Codesubs.
 
 Both CLIs refresh their tokens automatically. A new browser login is only needed if a provider revokes the session; then click **Sign in** on the account row. It signs in again inside the same folder, so the account keeps its name and agents keep working.
 
 ## Banked resets
 
-Codex occasionally grants free rate-limit resets. Each Codex row shows how many are banked. To spend one, open the row's **⋯** menu and choose **Apply reset…**, then confirm. If no current limit is eligible, Codex reports it and no credit is used. Agents can do the same with `subscription-manager reset codex/<slug>` (shows the count) and `--yes` (applies one, only after the user agrees).
+Codex occasionally grants free rate-limit resets. Each Codex row shows how many are banked. To spend one, open the row's **⋯** menu and choose **Apply reset…**, then confirm. If no current limit is eligible, Codex reports it and no credit is used. Agents can do the same with `codesubs reset codex/<slug>` (shows the count) and `--yes` (applies one, only after the user agrees).
 
 Claude also grants saved limit resets. Each Claude row shows the available count, with individual grant descriptions and expiration dates in its **⋯** menu. Grants can cover different limits: a full reset and a model-specific reset are not interchangeable. Expired, future, spent, and paused grants are excluded from the count. Choose **Open Claude usage…**, sign into the matching email, and use **Settings > Usage** to redeem one. The app only reads the balance and never spends a Claude reset. If the balance cannot be read, it shows **Resets unavailable**, rather than reporting zero.
 
@@ -84,44 +86,44 @@ Every account is a ready-to-use home folder:
 Point an agent at an account with one environment variable:
 
 ```sh
-CODEX_HOME="$(subscription-manager path codex/work)" codex exec "…"
-CLAUDE_CONFIG_DIR="$(subscription-manager path claude/personal)" claude -p "…"
+CODEX_HOME="$(codesubs path codex/work)" codex exec "…"
+CLAUDE_CONFIG_DIR="$(codesubs path claude/personal)" claude -p "…"
 ```
 
-Or use the `subscription-manager` command:
+Or use the `codesubs` command:
 
 ```sh
-subscription-manager list                       # accounts and remaining quota
-subscription-manager list --json                # cached snapshot, for scripts
-subscription-manager refresh --json             # live quota, works with the app closed
-subscription-manager rename claude/work personal
-subscription-manager remove claude/personal --yes
-subscription-manager pick claude                # the Claude account with the most quota left
-subscription-manager env claude/personal        # shell lines that select an account (fish or sh)
-subscription-manager exec codex/work -- codex exec "fix the tests"
-subscription-manager exec "$(subscription-manager pick codex --min 20)" -- codex exec "…"
-eval "$(subscription-manager env claude/personal)"     # sh/zsh
-subscription-manager env claude/personal | source      # fish
+codesubs list                       # accounts and remaining quota
+codesubs list --json                # cached snapshot, for scripts
+codesubs refresh --json             # live quota, works with the app closed
+codesubs rename claude/work personal
+codesubs remove claude/personal --yes
+codesubs pick claude                # the Claude account with the most quota left
+codesubs env claude/personal        # shell lines that select an account (fish or sh)
+codesubs exec codex/work -- codex exec "fix the tests"
+codesubs exec "$(codesubs pick codex --min 20)" -- codex exec "…"
+eval "$(codesubs env claude/personal)"     # sh/zsh
+codesubs env claude/personal | source      # fish
 ```
 
 Accounts can be named as `<provider>/<slug>`, a unique slug, or an email address. Quota figures come from the latest successful refresh by any client. The app refreshes every 15 minutes while running; the standalone `refresh` command works without it. `pick` retains legacy stale fallback and treats elapsed reset times as projected full availability; use `--max-age 900` or `--refresh` to require fresh observations. Selection does not reserve quota.
 
 ### Rules that keep logins working
 
-- **Use the exact path.** Claude Code stores each folder's login in the macOS Keychain under a key derived from the literal `CLAUDE_CONFIG_DIR` string. Use the absolute path from `accounts.json` or `subscription-manager path`, with no trailing slash and no symlinked alias; any other spelling looks logged out. `~` and `$HOME` are fine in a shell because they expand to the same string.
+- **Use the exact path.** Claude Code stores each folder's login in the macOS Keychain under a key derived from the literal `CLAUDE_CONFIG_DIR` string. Use the absolute path from `accounts.json` or `codesubs path`, with no trailing slash and no symlinked alias; any other spelling looks logged out. `~` and `$HOME` are fine in a shell because they expand to the same string.
 - **Never copy credentials.** Both providers rotate refresh tokens on use, so a copied `auth.json` or Keychain entry goes stale and can sign the original out. Always point at the folder in place.
-- **Clear overriding variables.** `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` take priority over the folder's login. `subscription-manager env` and `exec` clear them for you.
-- **Remove accounts through the app or `subscription-manager remove account --yes`**, not with `logout` inside a folder.
+- **Clear overriding variables.** `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` take priority over the folder's login. `codesubs env` and `exec` clear them for you.
+- **Remove accounts through the app or `codesubs remove account --yes`**, not with `logout` inside a folder.
 - Claude Code logins live in the Keychain, so `claude/<slug>` folders only work on this Mac. For machines without the Keychain (CI, containers), use `claude setup-token` instead.
 
 ### Shared settings
 
-Your normal settings follow you into every account. The first time each account folder is prepared, Subscription Manager symlinks these items when they exist:
+Your normal settings follow you into every account. The first time each account folder is prepared, Codesubs symlinks these items when they exist:
 
 - from `~/.claude`: `settings.json`, `CLAUDE.md`, `agents`, `commands`, `hooks`, `output-styles`, `plugins`, `skills`, `keybindings.json`
 - from `~/.codex`: `AGENTS.md`, `prompts`, `rules`, `skills`, `hooks.json`
 
-Delete a link to give that account its own copy; it is not recreated. Credentials, history and per-account state (`.claude.json`, `auth.json`, sessions) are never shared. Codex `config.toml` is per account (Subscription Manager pins `cli_auth_credentials_store = "file"` there), so copy any MCP servers or model settings you want into it.
+Delete a link to give that account its own copy; it is not recreated. Credentials, history and per-account state (`.claude.json`, `auth.json`, sessions) are never shared. Codex `config.toml` is per account (Codesubs pins `cli_auth_credentials_store = "file"` there), so copy any MCP servers or model settings you want into it.
 
 ## Privacy
 
@@ -135,8 +137,8 @@ The app runs the locally installed `codex` and `claude` CLIs, which talk to Open
 ./scripts/test.sh                       # offline Rust + Swift tests
 cargo test --workspace                  # library and CLI tests
 ./apps/macos/test.sh                    # app protocol/process tests (CLT compatible)
-./scripts/build-cli.sh                  # target/release/subscription-manager
-./scripts/build-app.sh                  # dist/Subscription Manager.app
+./scripts/build-cli.sh                  # target/release/codesubs
+./scripts/build-app.sh                  # dist/Codesubs.app
 ./scripts/integration-test.sh --live    # opt-in live provider refresh
 ```
 

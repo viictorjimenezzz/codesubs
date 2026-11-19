@@ -1,8 +1,8 @@
-use subscription_core::AccountRecord;
+use codesubs_core::AccountRecord;
 
 pub fn accounts(accounts: &[AccountRecord]) {
     if accounts.is_empty() {
-        println!("No accounts yet. Run subscription-manager add <codex|claude> --email <email>.");
+        println!("No accounts yet. Run codesubs add <codex|claude> --email <email>.");
         return;
     }
     println!(

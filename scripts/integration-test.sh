@@ -9,8 +9,7 @@ if [[ "${1:-}" != "--live" ]]; then
   exit 2
 fi
 shift
-cargo build --manifest-path "$project_dir/Cargo.toml" --locked -p subscription-cli
-cli="$project_dir/target/debug/subscription-manager"
+cli="$("$project_dir/scripts/build-cli.sh" dev)"
 if (( $# == 0 )); then
   "$cli" refresh --json | python3 -c 'import json,sys; r=json.load(sys.stdin); print(json.dumps(r,indent=2)); sys.exit(bool(r["failures"]))'
 else

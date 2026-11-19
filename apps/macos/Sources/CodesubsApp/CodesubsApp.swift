@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 @main
-struct SubscriptionManagerApp: App {
+struct CodesubsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
@@ -10,7 +10,7 @@ struct SubscriptionManagerApp: App {
             QuotaPopoverView(store: delegate.store)
         } label: {
             Image(nsImage: menuBarIcon)
-                .accessibilityLabel("Subscription Manager")
+                .accessibilityLabel("Codesubs")
         }
         .menuBarExtraStyle(.window)
     }
@@ -24,7 +24,7 @@ struct SubscriptionManagerApp: App {
             image.size = NSSize(width: 18, height: 18)
             return image
         }
-        return NSImage(systemSymbolName: "gauge.with.dots.needle.67percent", accessibilityDescription: "Subscription Manager") ?? NSImage()
+        return NSImage(systemSymbolName: "gauge.with.dots.needle.67percent", accessibilityDescription: "Codesubs") ?? NSImage()
     }
 }
 

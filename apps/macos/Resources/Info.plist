@@ -5,17 +5,17 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Subscription Manager</string>
+	<string>Codesubs</string>
 	<key>CFBundleExecutable</key>
-	<string>subscription-manager-app</string>
+	<string>codesubs-app</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.viictorjimenezzz.subscription-manager</string>
+	<string>com.viictorjimenezzz.codesubs</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Subscription Manager</string>
+	<string>Codesubs</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

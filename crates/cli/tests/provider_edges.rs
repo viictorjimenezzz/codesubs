@@ -35,7 +35,7 @@ impl Scratch {
     }
 
     fn cli(&self) -> Command {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_subscription-manager"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_codesubs"));
         command
             .env("HOME", &self.user)
             .env("SUBSCRIPTION_MANAGER_HOME", &self.vault);

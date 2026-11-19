@@ -20,15 +20,15 @@ Keep macOS support initially: the existing Claude authentication integration dep
 ## Proposed layout
 
 ```text
-subscription-manager/
+codesubs/
 ├── Cargo.toml                         # Workspace members: crates/core, crates/cli
 ├── Cargo.lock
 ├── crates/
-│   ├── core/                          # Package: subscription-core
+│   ├── core/                          # Package: codesubs-core
 │   │   ├── Cargo.toml
 │   │   ├── src/
 │   │   │   ├── lib.rs                 # Supported public exports
-│   │   │   ├── manager.rs             # Public SubscriptionManager API
+│   │   │   ├── manager.rs             # Public Codesubs API
 │   │   │   ├── config.rs              # Explicit vault root/runtime options
 │   │   │   ├── error.rs               # Typed domain/operation errors
 │   │   │   ├── models/
@@ -74,8 +74,8 @@ subscription-manager/
 │   │   │           └── keychain.rs
 │   │   ├── tests/                     # Repository/lifecycle/provider tests
 │   │   └── examples/basic.rs           # Library consumer without CLI/UI
-│   └── cli/                           # Package: subscription-cli
-│       ├── Cargo.toml                 # Binary: subscription-manager
+│   └── cli/                           # Package: codesubs-cli
+│       ├── Cargo.toml                 # Binary: codesubs
 │       ├── src/
 │       │   ├── main.rs                # Parse → call core → render → exit
 │       │   ├── args.rs
@@ -91,8 +91,8 @@ subscription-manager/
 ├── apps/
 │   └── macos/
 │       ├── Package.swift
-│       ├── Sources/SubscriptionManagerApp/
-│       │   ├── SubscriptionManagerApp.swift
+│       ├── Sources/CodesubsApp/
+│       │   ├── CodesubsApp.swift
 │       │   ├── Models/                # Decodable CLI response types
 │       │   ├── Services/
 │       │   │   └── SubscriptionClient.swift  # Async Process wrapper
@@ -123,8 +123,8 @@ This is a destination map; create files as implementations are ported. `lib.rs`,
 
 | Component | Responsibility |
 | --- | --- |
-| `subscription-core` | Account lifecycle, providers, authentication workflows, quotas, selection, credential relocation, storage, locking |
-| `subscription-cli` | Argument parsing, human/JSON output, shell rendering, exit codes, child-command execution |
+| `codesubs-core` | Account lifecycle, providers, authentication workflows, quotas, selection, credential relocation, storage, locking |
+| `codesubs-cli` | Argument parsing, human/JSON output, shell rendering, exit codes, child-command execution |
 | SwiftUI app | Presentation, refresh scheduling, notifications, browser/pasteboard, confirmations; invokes CLI |
 
 `manager.rs` is the supported Rust API. Keep implementation modules private by default, re-export required values/options, and provide injection seams for providers, repository, credential operations, and time. The library never parses command-line arguments, prints to stdout, exits, opens UI, or changes the caller's global environment. Return typed results, progress events, and execution contexts instead.
@@ -135,9 +135,9 @@ Provider capabilities distinguish reading Claude reset balances from redeeming C
 
 ## Swift app and CLI contract
 
-`SubscriptionClient.swift` is the app's only subscription backend. For example, it invokes `subscription-manager refresh claude/work --json`, decodes the result, and updates the view model. Swift does not read `accounts.json`, manage credentials, or reproduce account-selection rules.
+`SubscriptionClient.swift` is the app's only subscription backend. For example, it invokes `codesubs refresh claude/work --json`, decodes the result, and updates the view model. Swift does not read `accounts.json`, manage credentials, or reproduce account-selection rules.
 
-- Bundle the matching CLI at `Contents/Helpers/subscription-manager` and invoke that absolute path. Permit an explicit development override. The standalone CLI remains independently installable.
+- Bundle the matching CLI at `Contents/Helpers/codesubs` and invoke that absolute path. Permit an explicit development override. The standalone CLI remains independently installable.
 - Use argument arrays, asynchronous execution, concurrent stdout/stderr draining, deadlines, and cancellation. Do not invoke shell command strings.
 - Preserve existing `list --json` array output initially. Add an explicit protocol version for app/new-command responses before changing shapes. Shared fixtures verify Rust encoders and Swift decoders.
 - JSON stdout contains documented machine output only; diagnostics go to stderr. Include stable error codes, observation times, freshness, and partial refresh failures. `exec` passes through the child's output/status.

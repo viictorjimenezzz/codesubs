@@ -6,7 +6,7 @@ use std::{
 use tempfile::TempDir;
 
 fn run(root: &TempDir, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_subscription-manager"))
+    Command::new(env!("CARGO_BIN_EXE_codesubs"))
         .env("SUBSCRIPTION_MANAGER_HOME", root.path())
         .args(args)
         .output()
@@ -21,6 +21,25 @@ fn seed(root: &TempDir) {
         }]
     })).unwrap()).unwrap();
 }
+#[test]
+fn help_and_version_use_the_installed_command_name() {
+    let root = TempDir::new().unwrap();
+    let help = run(&root, &["--help"]);
+    assert!(help.status.success());
+    assert!(
+        String::from_utf8(help.stdout)
+            .unwrap()
+            .contains("Usage: codesubs ")
+    );
+
+    let version = run(&root, &["--version"]);
+    assert!(version.status.success());
+    assert_eq!(
+        String::from_utf8(version.stdout).unwrap().trim_end(),
+        concat!("codesubs ", env!("CARGO_PKG_VERSION"))
+    );
+}
+
 #[test]
 fn empty_store_works_without_app_and_info_is_versioned() {
     let root = TempDir::new().unwrap();
@@ -64,7 +83,7 @@ fn list_preserves_array_contract_and_adds_full_app_snapshot() {
 fn exec_clears_conflicting_auth_and_preserves_exit_status() {
     let root = TempDir::new().unwrap();
     seed(&root);
-    let output = Command::new(env!("CARGO_BIN_EXE_subscription-manager"))
+    let output = Command::new(env!("CARGO_BIN_EXE_codesubs"))
         .env("SUBSCRIPTION_MANAGER_HOME", root.path())
         .env("ANTHROPIC_API_KEY", "must-be-removed")
         .args([
@@ -158,7 +177,7 @@ fn explicit_home_never_adopts_legacy_accounts() {
         "this invalid legacy file must not be read",
     )
     .unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_subscription-manager"))
+    let output = Command::new(env!("CARGO_BIN_EXE_codesubs"))
         .env_remove("SUBSCRIPTION_MANAGER_HOME")
         .env("HOME", user.path())
         .args(["--home", scratch.path().to_str().unwrap(), "list", "--json"])
@@ -225,7 +244,7 @@ fn standalone_codex_lifecycle_uses_one_core_without_the_app() {
     .unwrap();
     fs::set_permissions(&executable, fs::Permissions::from_mode(0o700)).unwrap();
     let call = |args: &[&str]| {
-        let output = Command::new(env!("CARGO_BIN_EXE_subscription-manager"))
+        let output = Command::new(env!("CARGO_BIN_EXE_codesubs"))
             .env("SUBSCRIPTION_MANAGER_HOME", &vault)
             .env("HOME", root.path().join("user-home"))
             .env("SUBSCRIPTION_MANAGER_CODEX_EXECUTABLE", &executable)

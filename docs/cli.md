@@ -3,21 +3,21 @@
 Build with `./scripts/build-cli.sh` and install with `./scripts/install-cli.sh`. Cargo and a Rust toolchain are required to build; the resulting binary does not require the Swift app. Ensure `~/.local/bin` is on PATH.
 
 ```sh
-subscription-manager list --json
-subscription-manager refresh --json
-subscription-manager pick claude --min 20 --max-age 900
-subscription-manager pick codex --refresh --min 20
-subscription-manager env claude/work --sh
-subscription-manager exec codex/work -- codex exec 'fix the tests'
-subscription-manager add claude --email someone@example.com
-subscription-manager add-code --stdin --slug work
-subscription-manager reconnect claude/work --json-events
-subscription-manager rename claude/work personal
-subscription-manager remove claude/personal --yes
-subscription-manager reset codex/work
-subscription-manager reset codex/work --yes
-subscription-manager doctor --json
-subscription-manager info --json
+codesubs list --json
+codesubs refresh --json
+codesubs pick claude --min 20 --max-age 900
+codesubs pick codex --refresh --min 20
+codesubs env claude/work --sh
+codesubs exec codex/work -- codex exec 'fix the tests'
+codesubs add claude --email someone@example.com
+codesubs add-code --stdin --slug work
+codesubs reconnect claude/work --json-events
+codesubs rename claude/work personal
+codesubs remove claude/personal --yes
+codesubs reset codex/work
+codesubs reset codex/work --yes
+codesubs doctor --json
+codesubs info --json
 ```
 
 Accounts resolve by `provider/slug`, unique slug, or email. Refresh works with the app closed. `list` is cached; default `pick` retains legacy stale fallback, while `--max-age` and `--refresh` require fresh data. Choosing an account does not reserve quota.

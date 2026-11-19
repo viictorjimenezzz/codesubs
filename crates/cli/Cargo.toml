@@ -1,16 +1,16 @@
 [package]
-name = "subscription-cli"
+name = "codesubs-cli"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish = false
 
 [[bin]]
-name = "subscription-manager"
+name = "codesubs"
 path = "src/main.rs"
 
 [dependencies]
-subscription-core = { path = "../core" }
+codesubs-core = { path = "../core" }
 clap = { version = "4", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 chrono = { version = "0.4", features = ["serde"] }

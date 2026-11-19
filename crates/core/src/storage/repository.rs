@@ -221,15 +221,15 @@ fn write_guide(path: &Path, text: &str) -> Result<()> {
     Ok(())
 }
 
-const GUIDE: &str = "# Subscription Manager credentials
+const GUIDE: &str = "# codesubs credentials
 
-Use the standalone subscription-manager command with the app open or closed.
+Use the standalone codesubs command with the app open or closed.
 
-    subscription-manager list
-    subscription-manager refresh
-    subscription-manager pick claude
-    subscription-manager env claude/work
-    subscription-manager exec codex/work -- codex exec '…'
+    codesubs list
+    codesubs refresh
+    codesubs pick claude
+    codesubs env claude/work
+    codesubs exec codex/work -- codex exec '…'
 
 Account references use provider/slug. accounts.json records exact provider home
 paths. Use the path returned by the CLI for Claude Code. Its Keychain entry
@@ -242,20 +242,20 @@ duplicate credentials. See ADD.md for onboarding.
 
 const ADD_GUIDE: &str = "# Add a subscription account
 
-Run subscription-manager add with the provider and expected account email.
+Run codesubs add with the provider and expected account email.
 
-    subscription-manager add codex --email someone@example.com
-    subscription-manager add claude --email someone@example.com
+    codesubs add codex --email someone@example.com
+    codesubs add claude --email someone@example.com
 
 Open the sign-in URL using the intended account. Keep the originating add
 command running. If Claude shows an authorization code, send it from another
 terminal using:
 
-    subscription-manager add-code '<authorization code>'
+    codesubs add-code '<authorization code>'
 
 Use --slug to identify a pending login when several are running. The add
 command completes after it verifies the logged-in identity. Confirm the account
-with subscription-manager list.
+with codesubs list.
 
 Use --from-default only when explicitly moving an active default login into
 the vault. Sign-in to managed accounts should remain isolated from provider

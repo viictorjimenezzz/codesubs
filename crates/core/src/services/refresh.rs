@@ -2,8 +2,8 @@ use tokio::task::JoinSet;
 use uuid::Uuid;
 
 use crate::{
-    AccountRecord, AccountStatus, Error, Provider, RefreshFailure, RefreshReport, Result,
-    SubscriptionManager, storage::Manifest,
+    AccountRecord, AccountStatus, Codesubs, Error, Provider, RefreshFailure, RefreshReport, Result,
+    storage::Manifest,
 };
 
 use super::{
@@ -11,7 +11,7 @@ use super::{
     selection,
 };
 
-impl SubscriptionManager {
+impl Codesubs {
     /// Refresh one account or the entire vault. Successful per-account writes
     /// are committed individually and failed observations retain their cache.
     pub async fn refresh(&self, reference: Option<&str>) -> Result<RefreshReport> {

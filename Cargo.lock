@@ -230,6 +230,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0921b3876b3a1df8a1c9f912e7f94342458022c2e84288015893d83c4d62a79"
 
 [[package]]
+name = "codesubs-cli"
+version = "3.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "codesubs-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "codesubs-core"
+version = "3.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "chrono-tz",
+ "fs2",
+ "libc",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "unicode-normalization",
+ "uuid",
+]
+
+[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1190,41 +1225,6 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
-
-[[package]]
-name = "subscription-cli"
-version = "3.1.0"
-dependencies = [
- "chrono",
- "clap",
- "serde",
- "serde_json",
- "subscription-core",
- "tempfile",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "subscription-core"
-version = "3.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "chrono-tz",
- "fs2",
- "libc",
- "regex",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror",
- "tokio",
- "unicode-normalization",
- "uuid",
-]
 
 [[package]]
 name = "subtle"

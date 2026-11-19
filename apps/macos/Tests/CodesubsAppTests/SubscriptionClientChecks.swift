@@ -20,6 +20,10 @@ struct SubscriptionClientChecks {
     }
 
     static func testListDecodesSharedFixtureAndDrainsBothStreams(_ fixture: URL) async throws {
+        try checkEqual(
+            SubscriptionClient(environment: [:]).executable,
+            Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/codesubs")
+        )
         let cli = try FakeCLI(script: #"""
         [ "$1" = 'list' ] && [ "$2" = '--json' ] || exit 22
         /bin/dd if=/dev/zero bs=65536 count=4 2>/dev/null | /usr/bin/tr '\000' x >&2
@@ -188,7 +192,7 @@ private final class FakeCLI {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         self.root = root
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        let executable = root.appendingPathComponent("fake subscription manager")
+        let executable = root.appendingPathComponent("fake codesubs")
         try ("#!/bin/sh\n" + script(root) + "\n").write(to: executable, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
         client = SubscriptionClient(

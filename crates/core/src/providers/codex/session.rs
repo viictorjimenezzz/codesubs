@@ -49,8 +49,8 @@ impl Session {
             "initialize",
             json!({
                 "clientInfo": {
-                    "name": "subscription-manager",
-                    "title": "Subscription Manager",
+                    "name": "codesubs",
+                    "title": "Codesubs",
                     "version": env!("CARGO_PKG_VERSION"),
                 },
                 "capabilities": {"experimentalApi": true},
@@ -149,8 +149,9 @@ impl Session {
             self.send(json!({
                 "jsonrpc": "2.0",
                 "id": id,
-                "error": {"code": -32601, "message": "Method not supported by Subscription Manager"},
-            })).await?;
+                "error": {"code": -32601, "message": "Method not supported by Codesubs"},
+            }))
+            .await?;
         }
         Ok(())
     }

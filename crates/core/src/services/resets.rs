@@ -3,13 +3,13 @@ use std::{path::Path, time::Duration};
 use uuid::Uuid;
 
 use crate::{
-    AccountRecord, Error, ProviderBackend, ResetOutcome, ResetPreview, ResetReceipt, Result,
-    SubscriptionManager,
+    AccountRecord, Codesubs, Error, ProviderBackend, ResetOutcome, ResetPreview, ResetReceipt,
+    Result,
 };
 
 use super::accounts::{check_identity, interrupted, matching_account};
 
-impl SubscriptionManager {
+impl Codesubs {
     pub async fn preview_reset(&self, reference: &str) -> Result<ResetPreview> {
         self.recover_pending().await?;
         let original = self.resolve(reference).await?;

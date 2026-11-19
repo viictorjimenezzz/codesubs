@@ -1,6 +1,6 @@
 # CLI protocol v1
 
-The macOS app launches its bundled `Contents/Helpers/subscription-manager` directly. Scripts may use the independently installed binary. Arguments are passed as an array; no shell is required. `--home PATH` or `SUBSCRIPTION_MANAGER_HOME` selects a scratch/alternate vault.
+The macOS app launches its bundled `Contents/Helpers/codesubs` directly. Scripts may use the independently installed binary. Arguments are passed as an array; no shell is required. `--home PATH` or `SUBSCRIPTION_MANAGER_HOME` selects a scratch/alternate vault.
 
 Commands accept `--json --protocol-version 1`. Unknown protocol versions fail. Successful JSON commands emit one JSON value on stdout. Errors emit `{ "protocolVersion": 1, "error": { "code": "...", "message": "..." } }` on stderr with a nonzero status. Diagnostics never mix into JSON stdout. `exec` is an exception: its streams and status belong to the child.
 

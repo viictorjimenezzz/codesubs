@@ -1,4 +1,4 @@
-//! Manage subscription accounts through an isolated, coordinated credential vault.
+//! Manage Codex and Claude Code subscription accounts with codesubs.
 
 mod config;
 mod error;
@@ -12,7 +12,10 @@ mod storage;
 
 pub use config::ManagerConfig;
 pub use error::{Error, Result};
-pub use manager::{DoctorReport, ProviderDiagnostic, SubscriptionManager};
+pub use manager::{Codesubs, DoctorReport, ProviderDiagnostic};
 pub use models::*;
 pub use providers::{CredentialLocation, ProviderBackend};
 pub use services::selection::select_account;
+
+/// Compatibility name for the account manager.
+pub type SubscriptionManager = Codesubs;

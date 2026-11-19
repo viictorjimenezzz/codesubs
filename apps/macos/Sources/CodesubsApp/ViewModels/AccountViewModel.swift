@@ -4,6 +4,8 @@ import Foundation
 
 @MainActor
 final class AccountViewModel: ObservableObject {
+    private static let resetRequestPrefix = "pendingResetRequest."
+
     @Published private(set) var accounts: [AccountRecord] = []
     @Published private(set) var states: [UUID: AccountRuntimeState] = [:]
     @Published private(set) var info: ClientInfo?
@@ -24,6 +26,7 @@ final class AccountViewModel: ObservableObject {
 
     init(client: SubscriptionClient = SubscriptionClient()) {
         self.client = client
+        Self.migratePreviousResetRequests()
         refreshTask = Task { [weak self] in
             do {
                 try await Task.sleep(for: .seconds(1))
@@ -135,7 +138,21 @@ final class AccountViewModel: ObservableObject {
     }
 
     private func resetRequestKey(_ id: UUID) -> String {
-        "pendingResetRequest.\(id.uuidString)"
+        "\(Self.resetRequestPrefix)\(id.uuidString)"
+    }
+
+    private static func migratePreviousResetRequests() {
+        guard Bundle.main.bundleIdentifier == "com.viictorjimenezzz.codesubs" else { return }
+        let defaults = UserDefaults.standard
+        let migratedKey = "migratedSubscriptionManagerResetRequests"
+        guard !defaults.bool(forKey: migratedKey) else { return }
+        let previous = defaults.persistentDomain(forName: "com.viictorjimenezzz.subscription-manager") ?? [:]
+        for (key, value) in previous where key.hasPrefix(resetRequestPrefix) {
+            if defaults.object(forKey: key) == nil, let token = value as? String, UUID(uuidString: token) != nil {
+                defaults.set(token, forKey: key)
+            }
+        }
+        defaults.set(true, forKey: migratedKey)
     }
 
     func environmentSnippet(for account: AccountRecord) async -> String? {

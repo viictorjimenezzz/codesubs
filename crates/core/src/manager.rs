@@ -16,13 +16,13 @@ use crate::{
 /// A reusable subscription manager. Separate instances and CLI processes
 /// coordinate updates through stable locks inside the vault.
 #[derive(Clone)]
-pub struct SubscriptionManager {
+pub struct Codesubs {
     pub(crate) repository: Repository,
     pub(crate) backends: Arc<Vec<Arc<dyn ProviderBackend>>>,
     pub(crate) clock: Arc<dyn Fn() -> DateTime<Utc> + Send + Sync>,
 }
 
-impl SubscriptionManager {
+impl Codesubs {
     pub fn new(config: ManagerConfig) -> Result<Self> {
         Self::with_backends(config, providers::default_backends())
     }

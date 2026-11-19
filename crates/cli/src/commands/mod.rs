@@ -2,15 +2,14 @@ use crate::{
     args::{Args, Command},
     output, shell,
 };
+use codesubs_core::{
+    AddOptions, Codesubs, LoginEvent, LoginProgress, ManagerConfig, Provider, SelectionOptions,
+};
 use serde_json::json;
 use std::{
     io::{IsTerminal, Read},
     sync::Arc,
     time::Duration,
-};
-use subscription_core::{
-    AddOptions, LoginEvent, LoginProgress, ManagerConfig, Provider, SelectionOptions,
-    SubscriptionManager,
 };
 
 pub struct Failure {
@@ -25,8 +24,8 @@ impl Failure {
         }
     }
 }
-impl From<subscription_core::Error> for Failure {
-    fn from(error: subscription_core::Error) -> Self {
+impl From<codesubs_core::Error> for Failure {
+    fn from(error: codesubs_core::Error) -> Self {
         Self {
             code: error.code().into(),
             message: error.to_string(),
@@ -69,9 +68,7 @@ fn progress(
                     let _ = cancel.send(true);
                 }
             } else {
-                eprintln!(
-                    "If a code is shown, run: subscription-manager add-code --slug {slug} '<code>'"
-                );
+                eprintln!("If a code is shown, run: codesubs add-code --slug {slug} '<code>'");
             }
         }
     })
@@ -136,7 +133,7 @@ pub async fn run(args: Args) -> Result<(), Failure> {
     if let Some(home) = args.home {
         config = ManagerConfig::new(home, config.user_home)?;
     }
-    let manager = SubscriptionManager::new(config)?;
+    let manager = Codesubs::new(config)?;
     match args.command {
         Command::List { provider } => {
             let provider = provider.as_deref().map(parse_provider).transpose()?;
@@ -204,7 +201,7 @@ pub async fn run(args: Args) -> Result<(), Failure> {
                 for failure in &report.failures {
                     eprintln!("{}: {}", failure.reference, failure.message);
                 }
-                subscription_core::select_account(
+                codesubs_core::select_account(
                     &report.accounts,
                     provider,
                     options,
@@ -423,8 +420,8 @@ pub async fn run(args: Args) -> Result<(), Failure> {
 }
 
 fn completed(
-    manager: &SubscriptionManager,
-    account: &subscription_core::AccountRecord,
+    manager: &Codesubs,
+    account: &codesubs_core::AccountRecord,
     machine: bool,
     events: bool,
 ) {

@@ -1,14 +1,20 @@
 #!/bin/zsh
 # Shared installer helpers; sourcing has no process or filesystem side effects.
 app_pids() {
-  local executable="$1"
-  ps -axo pid=,comm= | SM_INSTALL_EXECUTABLE="$executable" python3 -c '
+  local executable="$1" match_cli_name="${2:-0}"
+  ps -axwwo pid=,comm= | SM_INSTALL_EXECUTABLE="$executable" SM_INSTALL_MATCH_CLI_NAME="$match_cli_name" python3 -c '
 import os, sys
-expected = os.environ["SM_INSTALL_EXECUTABLE"]
+expected = os.path.abspath(os.environ["SM_INSTALL_EXECUTABLE"])
+match_cli_name = os.environ["SM_INSTALL_MATCH_CLI_NAME"] == "1"
 for line in sys.stdin:
     fields = line.strip().split(None, 1)
-    if len(fields) == 2 and fields[1] == expected:
-        print(fields[0])
+    if len(fields) != 2:
+        continue
+    pid, command = fields
+    # A CLI launched through PATH can appear as a bare command name.
+    from_path = not os.path.isabs(command) and os.path.basename(command) == os.path.basename(expected)
+    if command == expected or (match_cli_name and from_path):
+        print(pid)
 '
 }
 
@@ -34,9 +40,9 @@ quit_app() {
 
 require_idle_cli() {
   local executable="$1" active
-  active="$(app_pids "$executable")"
+  active="$(app_pids "$executable" 1)"
   if [[ -n "$active" ]]; then
-    print -u2 "A subscription-manager command is still running (PIDs: $active). Wait for it to finish or cancel it before upgrading."
+    print -u2 "A command from $executable is still running (PIDs: $active). Wait for it to finish or cancel it before upgrading."
     return 1
   fi
 }

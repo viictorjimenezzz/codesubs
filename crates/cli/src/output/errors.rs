@@ -24,6 +24,6 @@ pub fn report(code: &str, message: &str, machine: bool, events: bool) {
             );
         }
     } else {
-        let _ = writeln!(std::io::stderr().lock(), "subscription-manager: {message}");
+        let _ = writeln!(std::io::stderr().lock(), "codesubs: {message}");
     }
 }

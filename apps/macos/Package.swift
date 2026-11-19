@@ -3,12 +3,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "SubscriptionManagerApp",
+    name: "CodesubsApp",
     platforms: [.macOS(.v13)],
     products: [
-        .executable(name: "subscription-manager-app", targets: ["SubscriptionManagerApp"])
+        .executable(name: "codesubs-app", targets: ["CodesubsApp"])
     ],
     targets: [
-        .executableTarget(name: "SubscriptionManagerApp")
+        .executableTarget(name: "CodesubsApp")
     ]
 )
