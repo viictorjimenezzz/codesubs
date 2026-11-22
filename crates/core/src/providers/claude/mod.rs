@@ -120,6 +120,19 @@ impl ClaudeBackend {
     }
 }
 
+/// Claude reports Ultra accounts as `max` in `auth status`; the profile cached
+/// in `.claude.json` carries the real plan name.
+fn profile_plan(home: &Path) -> Option<String> {
+    let bytes = std::fs::read(home.join(".claude.json")).ok()?;
+    let config = serde_json::from_slice::<Value>(&bytes).ok()?;
+    plan_from_profile(&config)
+}
+
+fn plan_from_profile(config: &Value) -> Option<String> {
+    let name = config["oauthAccount"]["planDisplayName"].as_str()?.trim();
+    (!name.is_empty()).then(|| name.to_lowercase())
+}
+
 #[async_trait]
 impl ProviderBackend for ClaudeBackend {
     fn provider(&self) -> Provider {
@@ -181,7 +194,8 @@ impl ProviderBackend for ClaudeBackend {
         };
         Ok(AccountStatus {
             email: auth["email"].as_str().map(str::to_owned),
-            plan: auth["subscriptionType"].as_str().map(str::to_owned),
+            plan: profile_plan(home)
+                .or_else(|| auth["subscriptionType"].as_str().map(str::to_owned)),
             quota,
         })
     }
@@ -228,5 +242,24 @@ impl ProviderBackend for ClaudeBackend {
             return crate::platform::keychain::remove(_location).await;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod plan_tests {
+    use super::plan_from_profile;
+    use serde_json::json;
+
+    #[test]
+    fn profile_plan_name_is_lowercased() {
+        let config = json!({"oauthAccount": {"planDisplayName": "Ultra"}});
+        assert_eq!(plan_from_profile(&config).as_deref(), Some("ultra"));
+    }
+
+    #[test]
+    fn missing_or_blank_profile_plan_falls_back() {
+        assert_eq!(plan_from_profile(&json!({})), None);
+        let blank = json!({"oauthAccount": {"planDisplayName": " "}});
+        assert_eq!(plan_from_profile(&blank), None);
     }
 }
