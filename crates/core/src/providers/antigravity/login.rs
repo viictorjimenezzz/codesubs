@@ -131,9 +131,13 @@ pub(super) async fn run(
                 &request.slug,
                 request.accept_terminal_input,
             )?);
-            progress(LoginEvent::SignInUrl {
-                url: url.as_str().to_owned(),
-            });
+            let mut url = url.as_str().to_owned();
+            if let Some(email) = &request.expected_email {
+                // The CLI cannot choose the Google account; preselect it.
+                url.push_str("&login_hint=");
+                url.push_str(&percent_encode(email));
+            }
+            progress(LoginEvent::SignInUrl { url });
             progress(LoginEvent::WaitingForCode {
                 slug: request.slug.clone(),
             });
@@ -146,6 +150,17 @@ async fn next_code(codes: Option<&mut LoginCodes>) -> Result<String> {
         Some(codes) => codes.next().await,
         None => std::future::pending().await,
     }
+}
+
+fn percent_encode(text: &str) -> String {
+    text.bytes()
+        .map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                (byte as char).to_string()
+            }
+            _ => format!("%{byte:02X}"),
+        })
+        .collect()
 }
 
 fn finished(token: &std::path::Path) -> Result<()> {
@@ -205,6 +220,11 @@ mod tests {
             AUTH_URL.find(screen).unwrap().as_str(),
             "https://accounts.google.com/o/oauth2/auth?access_type=offline&client_id=1.apps.googleusercontent.com&code_challenge=abc&state=sao_WnUn0RAANinmCYZn7Q"
         );
+    }
+
+    #[test]
+    fn the_login_hint_is_percent_encoded() {
+        assert_eq!(percent_encode("me+a@x.com"), "me%2Ba%40x.com");
     }
 
     #[test]
