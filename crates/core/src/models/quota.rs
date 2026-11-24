@@ -23,6 +23,9 @@ pub struct QuotaWindow {
     pub resets_at: Option<DateTime<Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub window_duration_minutes: Option<i64>,
+    /// What the window covers, such as the models sharing a group limit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
 }
 
 impl QuotaWindow {

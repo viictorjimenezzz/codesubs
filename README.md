@@ -1,12 +1,12 @@
 # Codesubs
 
-A Rust library and CLI for managing **Codex** and **Claude Code** subscription accounts and **API-key accounts** (such as Melious) that run those agents, with an optional native macOS menu-bar app.
+A Rust library and CLI for managing **Codex**, **Claude Code** and **Antigravity** subscription accounts and **API-key accounts** (such as Melious) that run those agents, with an optional native macOS menu-bar app.
 
 Keep several accounts signed in, read their quotas, and run an agent using a selected account. The Rust core owns account operations, provider integrations, and storage. The app calls the same CLI that agents use.
 
 ## Install
 
-Requires macOS 13+, Rust 1.89+ with Cargo, and Swift 5.9+ through Apple Command Line Tools to build the app. Install the provider CLIs you use: Codex and/or Claude Code.
+Requires macOS 13+, Rust 1.89+ with Cargo, and Swift 5.9+ through Apple Command Line Tools to build the app. Install the provider CLIs you use: Codex, Claude Code and/or Antigravity (`brew install --cask antigravity-cli`, command `agy`).
 
 ```sh
 ./scripts/install-cli.sh   # standalone codesubs command
@@ -25,6 +25,8 @@ codesubs pick claude --refresh --min 20
 codesubs exec codex/work -- codex exec 'fix the tests'
 codesubs exec claude/personal -- claude -p 'review this code'
 codesubs rename claude/work personal
+codesubs add antigravity --email you@gmail.com
+codesubs exec antigravity/you-gmail -- agy
 printf '%s' "$KEY" | codesubs api add melious --key-stdin
 codesubs exec melious/default -- claude
 codesubs api check
@@ -35,6 +37,12 @@ codesubs --help
 Account references are `provider/slug`, a unique slug, or an email. `exec` selects the account's environment and clears conflicting authentication variables. `env account --sh` or `--fish` prints shell setup instead.
 
 `list` reads cached quota. `refresh` fetches current data without requiring the app. `pick` prefers recent observations; `--max-age SECONDS` or `--refresh` requires fresh data. Elapsed reset times produce an availability estimate, and selection does not reserve quota.
+
+## Antigravity accounts
+
+`agy` keeps one OAuth token at `~/.gemini/antigravity-cli/antigravity-oauth-token` and has no setting to move it. Codesubs stores each account's token in its vault folder (`antigravity/<slug>/antigravity-oauth-token`) and makes the real token a **symlink** to the active account's. `codesubs exec antigravity/<slug> -- agy` (or `codesubs env`) repoints it, then runs the command; a plain `agy` afterwards runs as that account. Only one account is active at a time, and a session already running follows the link when it next reads the token. If `agy` replaces the link with a refreshed regular file, Codesubs moves that file back into the account before switching. An unmanaged login already at that path is never overwritten.
+
+Quota reads (`refresh`, the app) do not switch accounts: each account folder has a private `home/` whose token links to its own, and `agy -p "/usage"` runs there. Quota is per **group of models that share a weekly limit** (for example Gemini, and Claude plus GPT), each with its own reset time. There is no plan name, banked reset or per-model figure. Sign-in drives `agy`'s full-screen login through a pseudo-terminal: `add` prints the Google URL, and the authorization code goes to `add-code` like Claude's. Google may first ask to verify the account (`agy -p /usage` prints the link).
 
 ## API-key accounts
 

@@ -3,6 +3,7 @@ import Foundation
 enum Provider: String, Codable, CaseIterable, Sendable, Identifiable {
     case codex
     case claude
+    case antigravity
 
     var id: String { rawValue }
 
@@ -10,6 +11,7 @@ enum Provider: String, Codable, CaseIterable, Sendable, Identifiable {
         switch self {
         case .codex: return "Codex"
         case .claude: return "Claude Code"
+        case .antigravity: return "Antigravity"
         }
     }
 
@@ -17,6 +19,7 @@ enum Provider: String, Codable, CaseIterable, Sendable, Identifiable {
         switch self {
         case .codex: return "openai-logo.png"
         case .claude: return "claude-color.png"
+        case .antigravity: return "antigravity-icon.png"
         }
     }
 
@@ -47,6 +50,8 @@ struct QuotaWindow: Codable, Sendable, Equatable, Identifiable {
     let usedPercent: Int
     let resetsAt: Date?
     let windowDurationMinutes: Int?
+    /// What the window covers, such as the models sharing a group limit.
+    let detail: String?
 
     var id: String { "\(kind.rawValue)-\(label)" }
     var remainingPercent: Int { 100 - min(max(usedPercent, 0), 100) }

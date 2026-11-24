@@ -250,6 +250,7 @@ Use the standalone codesubs command with the app open or closed.
     codesubs pick claude
     codesubs env claude/work
     codesubs exec codex/work -- codex exec '…'
+    codesubs exec antigravity/me-gmail -- agy    # switches ~/.gemini's token
     codesubs exec melious/default -- claude      # API-key account
 
 Account references use provider/slug. accounts.json records exact provider home
@@ -267,6 +268,7 @@ Run codesubs add with the provider and expected account email.
 
     codesubs add codex --email someone@example.com
     codesubs add claude --email someone@example.com
+    codesubs add antigravity --email someone@gmail.com
 
 Open the sign-in URL using the intended account. Keep the originating add
 command running. If Claude shows an authorization code, send it from another

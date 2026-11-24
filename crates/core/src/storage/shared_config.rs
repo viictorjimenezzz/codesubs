@@ -7,6 +7,7 @@ pub(crate) const LINK_LEDGER: &str = ".codesubs-links";
 pub(super) fn link(provider: Provider, home: &Path, source: &Path) -> Result<()> {
     let items: &[&str] = match provider {
         Provider::Codex => &["AGENTS.md", "prompts", "rules", "skills", "hooks.json"],
+        Provider::Antigravity => &[],
         Provider::Claude => &[
             "settings.json",
             "CLAUDE.md",

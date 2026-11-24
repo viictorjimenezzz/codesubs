@@ -11,15 +11,17 @@ use crate::{Error, QuotaSnapshot, Result};
 pub enum Provider {
     Codex,
     Claude,
+    Antigravity,
 }
 
 impl Provider {
-    pub const ALL: [Self; 2] = [Self::Codex, Self::Claude];
+    pub const ALL: [Self; 3] = [Self::Codex, Self::Claude, Self::Antigravity];
 
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Codex => "codex",
             Self::Claude => "claude",
+            Self::Antigravity => "antigravity",
         }
     }
 
@@ -27,19 +29,24 @@ impl Provider {
         match self {
             Self::Codex => "Codex",
             Self::Claude => "Claude Code",
+            Self::Antigravity => "Antigravity",
         }
     }
 
-    pub const fn home_environment_variable(self) -> &'static str {
+    /// The variable that points the provider CLI at an account folder.
+    /// Antigravity has none: its active account is a symlink under
+    /// `~/.gemini`, switched by `Codesubs::activate`.
+    pub const fn home_environment_variable(self) -> Option<&'static str> {
         match self {
-            Self::Codex => "CODEX_HOME",
-            Self::Claude => "CLAUDE_CONFIG_DIR",
+            Self::Codex => Some("CODEX_HOME"),
+            Self::Claude => Some("CLAUDE_CONFIG_DIR"),
+            Self::Antigravity => None,
         }
     }
 
     pub const fn conflicting_environment_variables(self) -> &'static [&'static str] {
         match self {
-            Self::Codex => &[],
+            Self::Codex | Self::Antigravity => &[],
             Self::Claude => &[
                 "CLAUDE_CODE_OAUTH_TOKEN",
                 "ANTHROPIC_API_KEY",
@@ -62,6 +69,7 @@ impl FromStr for Provider {
         match value {
             "codex" => Ok(Self::Codex),
             "claude" => Ok(Self::Claude),
+            "antigravity" => Ok(Self::Antigravity),
             _ => Err(Error::InvalidInput(format!("unknown provider {value:?}"))),
         }
     }

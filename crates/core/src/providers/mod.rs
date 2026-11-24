@@ -1,3 +1,4 @@
+pub mod antigravity;
 pub mod claude;
 pub mod codex;
 
@@ -58,6 +59,7 @@ pub fn default_backends() -> Vec<Arc<dyn ProviderBackend>> {
     vec![
         Arc::new(codex::CodexBackend::default()),
         Arc::new(claude::ClaudeBackend::default()),
+        Arc::new(antigravity::AntigravityBackend::default()),
     ]
 }
 

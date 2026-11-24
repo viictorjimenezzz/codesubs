@@ -102,6 +102,11 @@ impl Codesubs {
                             .stage_credentials(CredentialLocation::Default, &home)
                             .await?
                     }
+                    Provider::Antigravity => {
+                        return Err(Error::Unsupported(
+                            "Antigravity logins cannot be adopted from the default home; sign in with codesubs add antigravity.".into(),
+                        ));
+                    }
                 }
             } else {
                 backend

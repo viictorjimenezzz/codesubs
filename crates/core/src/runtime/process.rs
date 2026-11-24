@@ -16,6 +16,7 @@ pub fn locate_executable(provider: Provider) -> Option<PathBuf> {
     let (name, override_key) = match provider {
         Provider::Codex => ("codex", "CODESUBS_CODEX_EXECUTABLE"),
         Provider::Claude => ("claude", "CODESUBS_CLAUDE_EXECUTABLE"),
+        Provider::Antigravity => ("agy", "CODESUBS_ANTIGRAVITY_EXECUTABLE"),
     };
     if let Some(override_path) = env::var_os(override_key) {
         let path = PathBuf::from(override_path);
@@ -74,6 +75,11 @@ pub fn configure_account(command: &mut Command, provider: Provider, home: &Path)
     match provider {
         Provider::Codex => {
             command.env("CODEX_HOME", home);
+        }
+        Provider::Antigravity => {
+            // The CLI has no configuration variable; its state follows $HOME.
+            let probe = crate::providers::antigravity::probe_home(home);
+            command.env("HOME", &probe).current_dir(&probe);
         }
         Provider::Claude => {
             command.env("CLAUDE_CONFIG_DIR", home);

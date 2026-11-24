@@ -7,10 +7,11 @@ pub fn account(manager: &Codesubs, record: &AccountRecord) -> Value {
     let mut value = serde_json::to_value(record).expect("account serialization");
     let object = value.as_object_mut().expect("account object");
     let home = manager.home(record).to_string_lossy().into_owned();
-    let variable = record.provider.home_environment_variable();
     object.insert("reference".into(), json!(record.reference()));
     object.insert("home".into(), json!(home));
-    object.insert("env".into(), json!({ variable: home }));
+    if let Some(variable) = record.provider.home_environment_variable() {
+        object.insert("env".into(), json!({ variable: home }));
+    }
     if let Some(quota) = &record.quota {
         if let Some(percent) = quota.available_percent(now) {
             object.insert("availablePercent".into(), json!(percent));

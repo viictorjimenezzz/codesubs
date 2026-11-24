@@ -54,7 +54,7 @@ impl FakeProvider {
     fn stored_identity(&self, home: &Path) -> Result<String> {
         match self.provider {
             Provider::Codex => Ok(fs::read_to_string(home.join("auth.json"))?),
-            Provider::Claude => self
+            Provider::Claude | Provider::Antigravity => self
                 .credentials
                 .lock()
                 .unwrap()
@@ -102,6 +102,7 @@ impl ProviderBackend for FakeProvider {
                     used_percent: if applied { 0 } else { 75 },
                     resets_at: None,
                     window_duration_minutes: Some(10080),
+                    detail: None,
                 }],
                 reset_credits: Some(ResetCredits {
                     available: if applied { 0 } else { 1 },
@@ -126,7 +127,7 @@ impl ProviderBackend for FakeProvider {
         fs::write(request.home.join("config.toml"), "provider defaults")?;
         match self.provider {
             Provider::Codex => fs::write(request.home.join("auth.json"), email)?,
-            Provider::Claude => {
+            Provider::Claude | Provider::Antigravity => {
                 self.credentials.lock().unwrap().insert(request.home, email);
             }
         }
@@ -537,6 +538,7 @@ fn selection_prefers_fresh_observations_and_marks_elapsed_resets() {
                 used_percent: 70,
                 resets_at: Some(now - ChronoDuration::seconds(1)),
                 window_duration_minutes: Some(10080),
+                detail: None,
             },
             QuotaWindow {
                 kind: QuotaWindowKind::WeeklyModel,
@@ -544,6 +546,7 @@ fn selection_prefers_fresh_observations_and_marks_elapsed_resets() {
                 used_percent: 100,
                 resets_at: None,
                 window_duration_minutes: Some(10080),
+                detail: None,
             },
         ],
         ..QuotaSnapshot::default()

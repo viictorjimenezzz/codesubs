@@ -40,6 +40,8 @@ Repository updates use stable interprocess locks and atomic manifest replacement
 
 Claude credential identity is tied to the exact account path. Folder renames stage and verify the corresponding Keychain entry before committing and cleaning up. Provider CLIs own refresh tokens. Codex helpers are short-lived to avoid stale credentials. Reset retries reuse an idempotency key.
 
+Antigravity (`providers/antigravity/`) cannot relocate its state, so each account's token lives in its vault folder and two symlinks point at it: a private probe home for quota reads, and the real `~/.gemini` token, repointed by `Codesubs::activate` under the provider's default-home lock. Sign-in runs the CLI in a pseudo-terminal.
+
 API-key accounts (`services/gateways.rs`) are deliberately separate from subscription accounts: they have no sign-in, quota or path-keyed credential, so they live in `gateways.json` beside the strictly versioned `accounts.json` (older binaries never rewrite them) under their own lock. Their key is a Keychain item named `codesubs-api-<service>/<slug>`. `exec` builds the agent environment at launch (Claude Code via `ANTHROPIC_*` variables, Codex via a generated per-account `config.toml` and `CODESUBS_GATEWAY_KEY`), so models can change without re-adding the key. A health check is one token per model on the route the agent uses.
 
 The supported platform is macOS. There is no daemon, FFI layer, or extra SDK wrapper. Other Rust programs import the library; other languages use the documented CLI.

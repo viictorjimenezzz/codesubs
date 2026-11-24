@@ -57,6 +57,7 @@ pub fn window(line: &str, now: DateTime<Utc>) -> Option<QuotaWindow> {
             .get(4)
             .and_then(|matched| reset_date(matched.as_str(), now)),
         window_duration_minutes: Some(duration),
+        detail: None,
     })
 }
 

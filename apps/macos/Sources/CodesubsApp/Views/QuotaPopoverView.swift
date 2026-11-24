@@ -354,7 +354,7 @@ private struct ProviderLogo: View {
                 .scaledToFit()
                 .foregroundStyle(.primary)
         } else {
-            Image(systemName: provider == .codex ? "terminal" : "asterisk").resizable().scaledToFit()
+            Image(systemName: provider == .codex ? "terminal" : provider == .claude ? "asterisk" : "sparkle").resizable().scaledToFit()
         }
     }
 }
@@ -387,10 +387,10 @@ private struct AccountRow: View {
                 Spacer(minLength: 6)
                 if state.isBusy {
                     ProgressView().controlSize(.small).scaleEffect(0.7)
-                } else if let weekly = account.quota?.weekly {
-                    Text("\(weekly.remainingPercent)%")
+                } else if let remaining = headlineRemaining {
+                    Text("\(remaining)%")
                         .font(.system(size: 11.5, weight: .semibold, design: .rounded).monospacedDigit())
-                        .foregroundStyle(color(forRemaining: weekly.remainingPercent))
+                        .foregroundStyle(color(forRemaining: remaining))
                 }
                 rowMenu
             }
@@ -407,7 +407,12 @@ private struct AccountRow: View {
                 removeConfirmation
             }
 
-            if let quota = account.quota, let weekly = quota.weekly {
+            if account.provider == .antigravity, let quota = account.quota {
+                ForEach(quota.windows) { window in groupBar(window) }
+                if case .failed(let message) = state {
+                    failure(message + (account.lastUpdated.map { " The numbers above are from \($0.formatted(.relative(presentation: .named)))." } ?? ""))
+                }
+            } else if let quota = account.quota, let weekly = quota.weekly {
                 QuotaBar(remaining: weekly.remainingPercent, color: color(forRemaining: weekly.remainingPercent))
 
                 HStack(spacing: 10) {
@@ -452,6 +457,40 @@ private struct AccountRow: View {
         .help(account.lastUpdated.map { "Updated \($0.formatted(.relative(presentation: .named)))" } ?? "")
     }
 
+    /// The bar shown beside the account name: Antigravity's tightest group,
+    /// or the weekly window of the other providers.
+    private var headlineRemaining: Int? {
+        guard let quota = account.quota else { return nil }
+        if account.provider == .antigravity { return quota.windows.map(\.remainingPercent).min() }
+        return quota.weekly?.remainingPercent
+    }
+
+    /// One bar per group of models that share a limit.
+    private func groupBar(_ window: QuotaWindow) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text(window.label)
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                Text("\(window.remainingPercent)%")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(color(forRemaining: window.remainingPercent))
+            }
+            QuotaBar(remaining: window.remainingPercent, color: color(forRemaining: window.remainingPercent))
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(window.detail ?? "")
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 4)
+                Text(resetText(for: window)).lineLimit(1)
+            }
+            .font(.system(size: 10.5).monospacedDigit())
+            .foregroundStyle(.tertiary)
+            .help(window.detail ?? "")
+        }
+    }
+
     private func failure(_ message: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(message)
@@ -492,9 +531,13 @@ private struct AccountRow: View {
 
     private var rowMenu: some View {
         Menu {
-            Button("Copy environment for agents") {
-                Task {
-                    if let snippet = await store.environmentSnippet(for: account) { copyToPasteboard(snippet) }
+            if account.provider == .antigravity {
+                Button("Copy launch command") { copyToPasteboard("codesubs exec \(account.reference) -- agy") }
+            } else {
+                Button("Copy environment for agents") {
+                    Task {
+                        if let snippet = await store.environmentSnippet(for: account) { copyToPasteboard(snippet) }
+                    }
                 }
             }
             Button("Copy folder path") { copyToPasteboard(account.home) }
@@ -512,7 +555,7 @@ private struct AccountRow: View {
                     confirmingReset = true
                 }
                 .disabled((bankedResets == 0 && !hasPendingReset) || state.isBusy)
-            } else {
+            } else if account.provider == .claude {
                 Divider()
                 Text(account.quota?.resetCredits == nil ? "Reset balance unavailable" : "\(bankedResets) banked \(bankedResets == 1 ? "reset" : "resets")")
                 if let grants = account.quota?.resetCredits?.grants {

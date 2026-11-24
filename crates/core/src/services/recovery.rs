@@ -163,6 +163,7 @@ impl Codesubs {
 fn merge_account_state(source: &Path, destination: &Path, provider: Provider) -> Result<()> {
     let credentials: &[&str] = match provider {
         Provider::Codex => &["auth.json", LINK_LEDGER],
+        Provider::Antigravity => &[crate::providers::antigravity::TOKEN, "home", LINK_LEDGER],
         Provider::Claude => &[
             ".credentials.json",
             ".claude.json",

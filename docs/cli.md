@@ -10,6 +10,8 @@ codesubs pick codex --refresh --min 20
 codesubs env claude/work --sh
 codesubs exec codex/work -- codex exec 'fix the tests'
 codesubs add claude --email someone@example.com
+codesubs add antigravity --email someone@gmail.com
+codesubs exec antigravity/someone-gmail -- agy
 codesubs add-code --stdin --slug work
 codesubs reconnect claude/work --json-events
 codesubs rename claude/work personal
@@ -26,6 +28,8 @@ codesubs exec melious/default --agent codex -- codex
 codesubs doctor --json
 codesubs info --json
 ```
+
+Antigravity accounts are selected by repointing `~/.gemini/antigravity-cli/antigravity-oauth-token`, so `exec` and `env` switch the account for every later `agy` too; `path` does not. Their quota has one window per model group (`label`, `detail` lists the models), and no plan or resets.
 
 API accounts use `service/slug` (slug defaults to `default`) and resolve in `env`, `path` and `exec` after subscription accounts. They need an agent: `--agent claude|codex`, or the command's name. `env` prints the key, so use it only to `eval` into a shell you trust. Subscription `pick`, `refresh` and the quota table ignore them.
 

@@ -87,11 +87,11 @@ impl Codesubs {
         let home = self.home(&account);
         Ok(ExecutionContext {
             account,
-            set: [(
-                provider.home_environment_variable().to_owned(),
-                home.to_string_lossy().into_owned(),
-            )]
-            .into(),
+            set: provider
+                .home_environment_variable()
+                .map(|variable| (variable.to_owned(), home.to_string_lossy().into_owned()))
+                .into_iter()
+                .collect(),
             unset: provider
                 .conflicting_environment_variables()
                 .iter()
@@ -99,6 +99,16 @@ impl Codesubs {
                 .collect(),
             home,
         })
+    }
+
+    /// Makes `account` the one a plain provider command runs as. Providers
+    /// that select accounts through an environment variable need nothing here.
+    pub async fn activate(&self, account: &AccountRecord) -> Result<()> {
+        if account.provider != Provider::Antigravity {
+            return Ok(());
+        }
+        let _lock = self.repository.default_lock(account.provider).await?;
+        providers::antigravity::activate(&self.home(account), &self.config().user_home)
     }
 
     pub async fn pick(&self, provider: Provider, options: SelectionOptions) -> Result<Selection> {

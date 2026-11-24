@@ -38,9 +38,11 @@ impl From<codesubs_core::Error> for Failure {
 }
 
 fn parse_provider(value: &str) -> Result<Provider, Failure> {
-    value
-        .parse()
-        .map_err(|_| Failure::invalid(format!("unknown provider {value:?}; use codex or claude")))
+    value.parse().map_err(|_| {
+        Failure::invalid(format!(
+            "unknown provider {value:?}; use codex, claude or antigravity"
+        ))
+    })
 }
 
 /// Resolves a subscription account or, failing that, an API account into the
@@ -52,9 +54,15 @@ async fn launch_environment(
     agent: Option<&str>,
     command: Option<&OsString>,
     default: Option<Provider>,
+    activate: bool,
 ) -> Result<(PathBuf, BTreeMap<String, String>, Vec<String>), Failure> {
     match manager.env(reference).await {
-        Ok(context) => return Ok((context.home, context.set, context.unset)),
+        Ok(context) => {
+            if activate {
+                manager.activate(&context.account).await?;
+            }
+            return Ok((context.home, context.set, context.unset));
+        }
         Err(codesubs_core::Error::AccountNotFound(_)) => {}
         Err(error) => return Err(error.into()),
     }
@@ -83,7 +91,7 @@ fn progress(
         LoginEvent::SignInUrl { url } => {
             if events {
                 let written = output::json::event(
-                    &json!({"protocolVersion":1,"type":"login","event":"login","loginID":login_id,"authURL":url,"browserOpened":provider==Provider::Claude,"acceptsCode":provider==Provider::Claude,"reference":reference}),
+                    &json!({"protocolVersion":1,"type":"login","event":"login","loginID":login_id,"authURL":url,"browserOpened":provider==Provider::Claude,"acceptsCode":provider!=Provider::Codex,"reference":reference}),
                 );
                 if !written {
                     let _ = cancel.send(true);
@@ -278,6 +286,7 @@ pub async fn run(args: Args) -> Result<(), Failure> {
                 agent.as_deref(),
                 None,
                 Some(Provider::Claude),
+                true,
             )
             .await?;
             let fish = fish
@@ -302,6 +311,7 @@ pub async fn run(args: Args) -> Result<(), Failure> {
                 agent.as_deref(),
                 None,
                 Some(Provider::Claude),
+                false,
             )
             .await?;
             if args.json {
@@ -318,9 +328,15 @@ pub async fn run(args: Args) -> Result<(), Failure> {
             let Some(executable) = command.first() else {
                 return Err(Failure::invalid("exec needs a command"));
             };
-            let (_, set, unset) =
-                launch_environment(&manager, &account, agent.as_deref(), Some(executable), None)
-                    .await?;
+            let (_, set, unset) = launch_environment(
+                &manager,
+                &account,
+                agent.as_deref(),
+                Some(executable),
+                None,
+                true,
+            )
+            .await?;
             let mut process = std::process::Command::new(executable);
             process.args(&command[1..]);
             for key in unset {

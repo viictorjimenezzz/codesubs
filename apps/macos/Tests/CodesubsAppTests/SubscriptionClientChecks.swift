@@ -33,7 +33,7 @@ struct SubscriptionClientChecks {
         """#)
 
         let accounts = try await cli.client.list()
-        try checkEqual(accounts.map(\.reference), ["claude/work", "codex/personal"])
+        try checkEqual(accounts.map(\.reference), ["claude/work", "codex/personal", "antigravity/team"])
         let claude = try require(accounts.first)
         let observed = try require(claude.lastUpdated)
         try checkEqual(observed.timeIntervalSince1970.truncatingRemainder(dividingBy: 1), 0.125, accuracy: 0.001)
@@ -46,8 +46,13 @@ struct SubscriptionClientChecks {
         try checkEqual(claude.quota?.resetCredits?.grants?.last?.paused, true)
         let start = try require(claude.quota?.resetCredits?.grants?.first?.startsAt)
         try checkEqual(start.timeIntervalSince1970.truncatingRemainder(dividingBy: 1), 0.5, accuracy: 0.001)
-        try checkEqual(accounts.last?.quota?.credits?.balance, 8.5)
-        try checkNil(accounts.last?.quota?.resetCredits)
+        try checkEqual(accounts[1].quota?.credits?.balance, 8.5)
+        try checkNil(accounts[1].quota?.resetCredits)
+        let antigravity = try require(accounts.last)
+        try checkEqual(antigravity.provider, .antigravity)
+        try checkEqual(antigravity.quota?.windows.map(\.label), ["Gemini Models", "Claude and GPT models"])
+        try checkEqual(antigravity.quota?.windows.first?.detail, "Gemini 3.8 Flash")
+        try checkEqual(antigravity.quota?.windows.first?.remainingPercent, 97)
     }
 
     static func testGatewaysDecodeSharedFixtureAndUseApiArguments(_ fixture: URL) async throws {

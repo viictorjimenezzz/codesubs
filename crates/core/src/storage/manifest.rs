@@ -64,7 +64,10 @@ impl Manifest {
                 }
                 let home = repository.home(account.provider, &account.slug);
                 let path = home.to_str().expect("validated vault path");
-                let environment = account.provider.home_environment_variable();
+                let environment = account
+                    .provider
+                    .home_environment_variable()
+                    .expect("Claude has a configuration variable");
                 for hint in [
                     entry.get("home"),
                     entry.get("env").and_then(|env| env.get(environment)),
@@ -162,10 +165,9 @@ impl Manifest {
                     .expect("account serializes as an object");
                 object.insert("reference".into(), account.reference().into());
                 object.insert("home".into(), path.into());
-                object.insert(
-                    "env".into(),
-                    serde_json::json!({account.provider.home_environment_variable(): path}),
-                );
+                if let Some(variable) = account.provider.home_environment_variable() {
+                    object.insert("env".into(), serde_json::json!({variable: path}));
+                }
             }
         }
         write_json(&repository.manifest_path(), &raw)

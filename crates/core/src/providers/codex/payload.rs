@@ -51,6 +51,7 @@ fn window(value: &Value) -> Option<QuotaWindow> {
         used_percent,
         resets_at: value.get("resetsAt").and_then(timestamp),
         window_duration_minutes,
+        detail: None,
     })
 }
 

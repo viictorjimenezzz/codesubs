@@ -207,6 +207,11 @@ impl Codesubs {
     /// The environment that runs `agent` against a gateway. Prepares the
     /// agent's private configuration folder and reads the key from the Keychain.
     pub async fn gateway_env(&self, reference: &str, agent: Provider) -> Result<GatewayExecution> {
+        if agent == Provider::Antigravity {
+            return Err(Error::Unsupported(
+                "API accounts run Claude Code or Codex, not Antigravity".into(),
+            ));
+        }
         let gateway = self.resolve_gateway(reference).await?;
         let key = gateway_key(&gateway).await?;
         let home = self.repository.gateway_home(&gateway, agent);
@@ -246,6 +251,7 @@ impl Codesubs {
                 }
                 unset.retain(|name| !set.contains_key(name));
             }
+            Provider::Antigravity => unreachable!("rejected before the folder is prepared"),
             Provider::Codex => {
                 let base_url = url(&gateway.openai_base_url, "OpenAI")?;
                 crate::storage::write_text(
@@ -256,9 +262,10 @@ impl Codesubs {
                 unset.push("OPENAI_API_KEY".into());
             }
         }
-        set.insert(
-            agent.home_environment_variable().into(),
-            home.to_string_lossy().into(),
+        set.extend(
+            agent
+                .home_environment_variable()
+                .map(|variable| (variable.to_owned(), home.to_string_lossy().into_owned())),
         );
         Ok(GatewayExecution {
             gateway,
