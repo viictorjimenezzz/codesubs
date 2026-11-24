@@ -1,5 +1,5 @@
 use chrono::Utc;
-use codesubs_core::{AccountRecord, Codesubs};
+use codesubs_core::{AccountRecord, Codesubs, GatewayRecord};
 use serde_json::{Value, json};
 
 pub fn account(manager: &Codesubs, record: &AccountRecord) -> Value {
@@ -31,6 +31,21 @@ pub fn account(manager: &Codesubs, record: &AccountRecord) -> Value {
             aggregate.insert("nextExpiry".into(), json!(credits.next_expiry_at(now)));
         }
     }
+    value
+}
+
+pub fn gateway(record: &GatewayRecord) -> Value {
+    let mut value = serde_json::to_value(record).expect("gateway serialization");
+    let agents: Vec<_> = [
+        ("claude", record.anthropic_base_url.is_some()),
+        ("codex", record.openai_base_url.is_some()),
+    ]
+    .into_iter()
+    .filter_map(|(agent, available)| available.then_some(agent))
+    .collect();
+    let object = value.as_object_mut().expect("gateway object");
+    object.insert("reference".into(), json!(record.reference()));
+    object.insert("agents".into(), json!(agents));
     value
 }
 

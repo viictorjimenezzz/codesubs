@@ -1,6 +1,6 @@
 # Codesubs
 
-A Rust library and CLI for managing **Codex** and **Claude Code** subscription accounts, with an optional native macOS menu-bar app.
+A Rust library and CLI for managing **Codex** and **Claude Code** subscription accounts and **API-key accounts** (such as Melious) that run those agents, with an optional native macOS menu-bar app.
 
 Keep several accounts signed in, read their quotas, and run an agent using a selected account. The Rust core owns account operations, provider integrations, and storage. The app calls the same CLI that agents use.
 
@@ -25,6 +25,9 @@ codesubs pick claude --refresh --min 20
 codesubs exec codex/work -- codex exec 'fix the tests'
 codesubs exec claude/personal -- claude -p 'review this code'
 codesubs rename claude/work personal
+printf '%s' "$KEY" | codesubs api add melious --key-stdin
+codesubs exec melious/default -- claude
+codesubs api check
 codesubs remove claude/personal --yes
 codesubs --help
 ```
@@ -33,11 +36,29 @@ Account references are `provider/slug`, a unique slug, or an email. `exec` selec
 
 `list` reads cached quota. `refresh` fetches current data without requiring the app. `pick` prefers recent observations; `--max-age SECONDS` or `--refresh` requires fresh data. Elapsed reset times produce an availability estimate, and selection does not reserve quota.
 
+## API-key accounts
+
+An API account runs Claude Code or Codex against any Anthropic- or OpenAI-compatible service with a stored key, using a **big** and a **small** model. Claude Code's Opus and Sonnet aliases map to the big model and Haiku plus background tasks to the small one, so `/model` switches between them. Codex uses the big model through the Responses API.
+
+```sh
+printf '%s' "$KEY" | codesubs api add melious --key-stdin          # preset: glm-5.3 / glm-5.3-flash
+printf '%s' "$KEY" | codesubs api add acme --key-stdin --openai-url https://llm.example.com/v1 --big large --small tiny
+codesubs exec melious/default -- claude                           # agent inferred from the command
+codesubs exec melious/default --agent codex -- codex
+codesubs api set-models melious/default --big deepseek-v4.1-flash-1017
+codesubs api check            # key accepted and both models answer a one-token request
+codesubs api list --json
+```
+
+Known services have presets (currently `melious`); any other needs `--anthropic-url` (Claude Code) and/or `--openai-url` (Codex) and both models. `add` refuses a key the service rejects unless `--no-check` is given. Keys live in the macOS Keychain, never in `gateways.json`. Each agent gets its own folder under `gateways/` that links your shared settings, skills and instructions. The app shows a green dot only while the key works and both models answer; orange means one is missing or rate limited, red means the service rejects the key or no model answers.
+
 ## Account storage
 
 ```text
 ~/.codesubs/
   accounts.json
+  gateways.json          API-key accounts (no secrets; keys are in the Keychain)
+  gateways/<service>-<slug>/{claude,codex}/
   README.md
   ADD.md
   codex/<slug>/

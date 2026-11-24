@@ -13,4 +13,6 @@ swiftc -parse-as-library -o "$scratch/subscription-client-checks" \
     "$package_dir/Sources/CodesubsApp/Services/SubscriptionClient.swift" \
     "$package_dir/Tests/CodesubsAppTests/SubscriptionClientChecks.swift"
 
-"$scratch/subscription-client-checks" "$project_dir/fixtures/protocol/account-list.json"
+"$scratch/subscription-client-checks" \
+    "$project_dir/fixtures/protocol/account-list.json" \
+    "$project_dir/fixtures/protocol/gateway-list.json"

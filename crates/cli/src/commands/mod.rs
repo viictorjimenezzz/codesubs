@@ -1,13 +1,17 @@
 use crate::{
-    args::{Args, Command},
+    args::{ApiCommand, Args, Command},
     output, shell,
 };
 use codesubs_core::{
-    AddOptions, Codesubs, LoginEvent, LoginProgress, ManagerConfig, Provider, SelectionOptions,
+    AddGatewayOptions, AddOptions, Codesubs, LoginEvent, LoginProgress, ManagerConfig, Provider,
+    SelectionOptions,
 };
 use serde_json::json;
 use std::{
+    collections::BTreeMap,
+    ffi::OsString,
     io::{IsTerminal, Read},
+    path::PathBuf,
     sync::Arc,
     time::Duration,
 };
@@ -37,6 +41,35 @@ fn parse_provider(value: &str) -> Result<Provider, Failure> {
     value
         .parse()
         .map_err(|_| Failure::invalid(format!("unknown provider {value:?}; use codex or claude")))
+}
+
+/// Resolves a subscription account or, failing that, an API account into the
+/// folder and environment an agent runs with. API accounts need an agent,
+/// taken from `--agent`, then the command, then `default`.
+async fn launch_environment(
+    manager: &Codesubs,
+    reference: &str,
+    agent: Option<&str>,
+    command: Option<&OsString>,
+    default: Option<Provider>,
+) -> Result<(PathBuf, BTreeMap<String, String>, Vec<String>), Failure> {
+    match manager.env(reference).await {
+        Ok(context) => return Ok((context.home, context.set, context.unset)),
+        Err(codesubs_core::Error::AccountNotFound(_)) => {}
+        Err(error) => return Err(error.into()),
+    }
+    let from_command = || {
+        let name = std::path::Path::new(command?).file_stem()?.to_str()?;
+        name.parse().ok()
+    };
+    let agent = match agent {
+        Some(agent) => parse_provider(agent)?,
+        None => from_command().or(default).ok_or_else(|| {
+            Failure::invalid("an API account needs --agent claude or --agent codex")
+        })?,
+    };
+    let context = manager.gateway_env(reference, agent).await?;
+    Ok((context.home, context.set, context.unset))
 }
 
 fn progress(
@@ -156,7 +189,17 @@ pub async fn run(args: Args) -> Result<(), Failure> {
                         .collect::<Vec<_>>()
                 ));
             } else {
-                output::table::accounts(&accounts);
+                let gateways = if provider.is_none() {
+                    manager.list_gateways().await?
+                } else {
+                    Vec::new()
+                };
+                if !accounts.is_empty() || gateways.is_empty() {
+                    output::table::accounts(&accounts);
+                }
+                if !gateways.is_empty() {
+                    output::table::gateways(&gateways);
+                }
             }
         }
         Command::Info => {
@@ -223,8 +266,20 @@ pub async fn run(args: Args) -> Result<(), Failure> {
                 println!("{}", selection.account.reference());
             }
         }
-        Command::Env { account, fish, sh } => {
-            let context = manager.env(&account).await?;
+        Command::Env {
+            account,
+            fish,
+            sh,
+            agent,
+        } => {
+            let (home, set, unset) = launch_environment(
+                &manager,
+                &account,
+                agent.as_deref(),
+                None,
+                Some(Provider::Claude),
+            )
+            .await?;
             let fish = fish
                 || (!sh
                     && std::env::var("SHELL").is_ok_and(|s| {
@@ -234,31 +289,44 @@ pub async fn run(args: Args) -> Result<(), Failure> {
                     }));
             if args.json {
                 output::json::print(
-                    &json!({"protocolVersion":1,"home":context.home,"set":context.set,"unset":context.unset}),
+                    &json!({"protocolVersion":1,"home":home,"set":set,"unset":unset}),
                 );
             } else {
-                println!("{}", shell::environment(&context.set, &context.unset, fish));
+                println!("{}", shell::environment(&set, &unset, fish));
             }
         }
-        Command::Path { account } => {
-            let context = manager.env(&account).await?;
+        Command::Path { account, agent } => {
+            let (home, ..) = launch_environment(
+                &manager,
+                &account,
+                agent.as_deref(),
+                None,
+                Some(Provider::Claude),
+            )
+            .await?;
             if args.json {
-                output::json::print(&json!({"protocolVersion":1,"home":context.home}));
+                output::json::print(&json!({"protocolVersion":1,"home":home}));
             } else {
-                println!("{}", context.home.display());
+                println!("{}", home.display());
             }
         }
-        Command::Exec { account, command } => {
-            let context = manager.env(&account).await?;
+        Command::Exec {
+            account,
+            agent,
+            command,
+        } => {
             let Some(executable) = command.first() else {
                 return Err(Failure::invalid("exec needs a command"));
             };
+            let (_, set, unset) =
+                launch_environment(&manager, &account, agent.as_deref(), Some(executable), None)
+                    .await?;
             let mut process = std::process::Command::new(executable);
             process.args(&command[1..]);
-            for key in context.unset {
+            for key in unset {
                 process.env_remove(key);
             }
-            process.envs(context.set);
+            process.envs(set);
             #[cfg(unix)]
             {
                 use std::os::unix::process::CommandExt;
@@ -276,6 +344,7 @@ pub async fn run(args: Args) -> Result<(), Failure> {
                 std::process::exit(status.code().unwrap_or(1));
             }
         }
+        Command::Api { command } => run_api(&manager, command, args.json).await?,
         Command::Add {
             provider,
             email,
@@ -452,5 +521,108 @@ fn reset_message(outcome: &str) -> &str {
         "noCredit" => "No banked resets are available.",
         "alreadyRedeemed" => "This reset was already applied.",
         _ => "Provider returned an unrecognized reset outcome.",
+    }
+}
+
+async fn run_api(manager: &Codesubs, command: ApiCommand, machine: bool) -> Result<(), Failure> {
+    match command {
+        ApiCommand::Add {
+            service,
+            slug,
+            key_stdin,
+            anthropic_url,
+            openai_url,
+            big,
+            small,
+            no_check,
+        } => {
+            if !key_stdin {
+                return Err(Failure::invalid(
+                    "pass --key-stdin and pipe the key in, so it stays out of argv and history",
+                ));
+            }
+            let mut key = String::new();
+            std::io::stdin()
+                .read_to_string(&mut key)
+                .map_err(|e| Failure::invalid(e.to_string()))?;
+            let gateway = manager
+                .add_gateway(
+                    &service.to_lowercase(),
+                    &key,
+                    AddGatewayOptions {
+                        slug,
+                        anthropic_base_url: anthropic_url,
+                        openai_base_url: openai_url,
+                        big_model: big,
+                        small_model: small,
+                        skip_check: no_check,
+                    },
+                )
+                .await?;
+            if machine {
+                output::json::print(
+                    &json!({"protocolVersion":1,"gateway":output::json::gateway(&gateway)}),
+                );
+            } else {
+                println!(
+                    "Saved {} ({} / {}). Run: codesubs exec {} -- claude",
+                    gateway.reference(),
+                    gateway.big_model,
+                    gateway.small_model,
+                    gateway.reference()
+                );
+            }
+        }
+        ApiCommand::List => gateways(manager.list_gateways().await?, machine),
+        ApiCommand::Check { account } => {
+            gateways(manager.check_gateways(account.as_deref()).await?, machine)
+        }
+        ApiCommand::SetModels {
+            account,
+            big,
+            small,
+        } => {
+            if big.is_none() && small.is_none() {
+                return Err(Failure::invalid("pass --big and/or --small"));
+            }
+            let gateway = manager.set_gateway_models(&account, big, small).await?;
+            if machine {
+                output::json::print(
+                    &json!({"protocolVersion":1,"gateway":output::json::gateway(&gateway)}),
+                );
+            } else {
+                println!(
+                    "{}: {} / {}",
+                    gateway.reference(),
+                    gateway.big_model,
+                    gateway.small_model
+                );
+            }
+        }
+        ApiCommand::Remove { account, yes } => {
+            if !yes {
+                return Err(Failure::invalid(
+                    "removal deletes the stored key and folders; pass --yes to confirm",
+                ));
+            }
+            let gateway = manager.remove_gateway(&account).await?;
+            if machine {
+                output::json::print(&json!({"protocolVersion":1,"removed":gateway.reference()}));
+            } else {
+                println!("Removed {}", gateway.reference());
+            }
+        }
+    }
+    Ok(())
+}
+
+fn gateways(gateways: Vec<codesubs_core::GatewayRecord>, machine: bool) {
+    if machine {
+        output::json::print(&json!({
+            "protocolVersion": 1,
+            "gateways": gateways.iter().map(output::json::gateway).collect::<Vec<_>>(),
+        }));
+    } else {
+        output::table::gateways(&gateways);
     }
 }

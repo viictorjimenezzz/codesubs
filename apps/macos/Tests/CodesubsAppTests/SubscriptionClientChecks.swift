@@ -7,12 +7,13 @@ struct SubscriptionClientChecks {
         do {
             let fixture = URL(fileURLWithPath: CommandLine.arguments[1])
             try await testListDecodesSharedFixtureAndDrainsBothStreams(fixture)
+            try await testGatewaysDecodeSharedFixtureAndUseApiArguments(URL(fileURLWithPath: CommandLine.arguments[2]))
             try await testMutationsUseExpectedArgumentsAndLoginCodeUsesStdin()
             try await testStructuredFailureAndUnsupportedVersion()
             try await testReconnectStreamsProgressBeforeCompletion()
             try await testCancelledReconnectWaitsForChildCleanup()
             try await testTimeoutTerminatesProcess()
-            print("6 Swift CLI client checks passed.")
+            print("7 Swift CLI client checks passed.")
         } catch {
             FileHandle.standardError.write(Data("Swift client check failed: \(error.localizedDescription.prefix(500))\n".utf8))
             exit(1)
@@ -47,6 +48,32 @@ struct SubscriptionClientChecks {
         try checkEqual(start.timeIntervalSince1970.truncatingRemainder(dividingBy: 1), 0.5, accuracy: 0.001)
         try checkEqual(accounts.last?.quota?.credits?.balance, 8.5)
         try checkNil(accounts.last?.quota?.resetCredits)
+    }
+
+    static func testGatewaysDecodeSharedFixtureAndUseApiArguments(_ fixture: URL) async throws {
+        let cli = try FakeCLI(script: #"""
+        [ "$1" = api ] || exit 22
+        case "$2" in
+          list) [ "$#" -eq 3 ] && [ "$3" = --json ] || exit 22; /bin/cat '\#(fixture.path)' ;;
+          check) [ "$#" -eq 3 ] && [ "$3" = --json ] || exit 22; /bin/cat '\#(fixture.path)' ;;
+          remove) [ "$#" -eq 5 ] && [ "$3" = melious/default ] && [ "$4" = --yes ] && [ "$5" = --json ] || exit 22
+            echo '{"protocolVersion":1,"removed":"melious/default"}' ;;
+          *) exit 24 ;;
+        esac
+        """#)
+
+        let gateways = try await cli.client.gateways()
+        try checkEqual(gateways.map(\.reference), ["melious/default", "acme/work"])
+        let melious = try require(gateways.first)
+        try checkEqual(melious.displayName, "Melious")
+        try checkEqual(melious.health?.status, .degraded)
+        try checkEqual(melious.health?.message, "glm-5.3 is rate limited right now")
+        try checkEqual(melious.bigModel, "glm-5.3")
+        try checkEqual(melious.smallModel, "glm-5.3-flash")
+        try checkNil(gateways.last?.health)
+        try checkEqual(gateways.last?.agents, ["codex"])
+        try checkEqual(try await cli.client.checkGateways().count, 2)
+        try await cli.client.removeGateway("melious/default")
     }
 
     static func testMutationsUseExpectedArgumentsAndLoginCodeUsesStdin() async throws {

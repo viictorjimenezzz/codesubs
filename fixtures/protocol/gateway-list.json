@@ -1,0 +1,27 @@
+{
+  "protocolVersion": 1,
+  "gateways": [
+    {
+      "id": "720a8f4a-42c5-44c7-a072-66125be5b41e",
+      "service": "melious",
+      "slug": "default",
+      "reference": "melious/default",
+      "agents": ["claude", "codex"],
+      "anthropicBaseUrl": "https://api.melious.ai",
+      "openaiBaseUrl": "https://api.melious.ai/v1",
+      "bigModel": "glm-5.3",
+      "smallModel": "glm-5.3-flash",
+      "health": {"status": "degraded", "checkedAt": "2026-11-24T11:55:22.981265Z", "latencyMs": 692, "message": "glm-5.3 is rate limited right now"}
+    },
+    {
+      "id": "3b2f2bd7-9a8c-4a6b-9f0e-6d6c8b1f2a10",
+      "service": "acme",
+      "slug": "work",
+      "reference": "acme/work",
+      "agents": ["codex"],
+      "openaiBaseUrl": "https://llm.example.com/v1",
+      "bigModel": "big",
+      "smallModel": "small"
+    }
+  ]
+}

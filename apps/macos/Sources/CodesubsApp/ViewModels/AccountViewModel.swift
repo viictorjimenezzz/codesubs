@@ -8,6 +8,8 @@ final class AccountViewModel: ObservableObject {
 
     @Published private(set) var accounts: [AccountRecord] = []
     @Published private(set) var states: [UUID: AccountRuntimeState] = [:]
+    @Published private(set) var gateways: [GatewayRecord] = []
+    @Published private(set) var isCheckingGateways = false
     @Published private(set) var info: ClientInfo?
     @Published private(set) var activeLogin: LoginInstructions?
     @Published private(set) var isSigningIn = false
@@ -52,6 +54,7 @@ final class AccountViewModel: ObservableObject {
         do {
             while !Task.isCancelled {
                 await reload()
+                await reloadGateways()
                 await loadInfo()
                 try await Task.sleep(for: .seconds(5))
             }
@@ -65,6 +68,8 @@ final class AccountViewModel: ObservableObject {
         defer { isRefreshingAll = false }
 
         await reload()
+        await reloadGateways()
+        Task { await checkGateways() }
         guard !Task.isCancelled, !accounts.isEmpty, !states.values.contains(where: \.isBusy) else { return }
         let targets = accounts
         for account in targets { states[account.id] = .refreshing }
@@ -85,6 +90,42 @@ final class AccountViewModel: ObservableObject {
         } catch is CancellationError {
         } catch {
             globalError = error.localizedDescription
+        }
+    }
+
+    /// Probes every API account's key and models; a check never costs more
+    /// than a one-token request per model.
+    func checkGateways() async {
+        guard !gateways.isEmpty, !isCheckingGateways else { return }
+        isCheckingGateways = true
+        defer { isCheckingGateways = false }
+        do {
+            gateways = try await client.checkGateways()
+        } catch is CancellationError {
+        } catch {
+            globalError = error.localizedDescription
+        }
+    }
+
+    func removeGateway(_ id: UUID) async {
+        guard let gateway = gateways.first(where: { $0.id == id }) else { return }
+        globalError = nil
+        do {
+            try await client.removeGateway(gateway.reference)
+            await reloadGateways()
+        } catch {
+            globalError = error.localizedDescription
+        }
+    }
+
+    private func reloadGateways() async {
+        do {
+            let result = try await client.gateways()
+            try Task.checkCancellation()
+            if result != gateways { gateways = result }
+        } catch is CancellationError {
+        } catch {
+            syncError = error.localizedDescription
         }
     }
 

@@ -345,3 +345,40 @@ fn current_config_file_env_and_explicit_home_have_clear_precedence() {
         json!(explicit.path())
     );
 }
+
+#[test]
+fn api_accounts_need_a_piped_key_and_list_empty_with_a_versioned_envelope() {
+    let root = TempDir::new().unwrap();
+    let rejected = run(&root, &["api", "add", "melious"]);
+    assert_eq!(rejected.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("--key-stdin"));
+
+    let listed = run(&root, &["api", "list", "--json"]);
+    assert_eq!(
+        serde_json::from_slice::<Value>(&listed.stdout).unwrap(),
+        json!({"protocolVersion":1,"gateways":[]})
+    );
+}
+
+#[test]
+fn api_accounts_cannot_shadow_a_subscription_provider() {
+    let root = TempDir::new().unwrap();
+    let mut add = Command::new(env!("CARGO_BIN_EXE_codesubs"))
+        .env("CODESUBS_HOME", root.path())
+        .args(["api", "add", "claude", "--key-stdin", "--no-check"])
+        .stdin(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    std::io::Write::write_all(&mut add.stdin.take().unwrap(), b"sk-test").unwrap();
+    let output = add.wait_with_output().unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("subscription provider"));
+}
+
+#[test]
+fn exec_of_an_unknown_reference_reports_a_missing_account() {
+    let root = TempDir::new().unwrap();
+    let output = run(&root, &["exec", "nobody/here", "--", "true"]);
+    assert_eq!(output.status.code(), Some(2));
+}

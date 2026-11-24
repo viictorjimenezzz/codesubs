@@ -11,7 +11,34 @@ pub fn service_name(config_directory: &str) -> String {
 }
 
 #[cfg(target_os = "macos")]
-pub(crate) use macos::{has_credentials, read, remove, stage};
+pub(crate) use macos::{
+    has_credentials, read, read_secret, remove, remove_secret, stage, store_secret,
+};
+
+/// The Keychain service holding an API-key account's secret.
+pub fn gateway_service(reference: &str) -> String {
+    format!("codesubs-api-{reference}")
+}
+
+#[cfg(not(target_os = "macos"))]
+pub(crate) async fn store_secret(_: &str, _: &str) -> crate::Result<()> {
+    Err(unsupported())
+}
+
+#[cfg(not(target_os = "macos"))]
+pub(crate) async fn read_secret(_: &str) -> crate::Result<Option<String>> {
+    Err(unsupported())
+}
+
+#[cfg(not(target_os = "macos"))]
+pub(crate) async fn remove_secret(_: &str) -> crate::Result<()> {
+    Err(unsupported())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn unsupported() -> crate::Error {
+    crate::Error::Unsupported("API keys are stored in the macOS Keychain.".into())
+}
 
 #[cfg(target_os = "macos")]
 mod macos {
@@ -81,10 +108,46 @@ mod macos {
     }
 
     pub async fn remove(location: CredentialLocation<'_>) -> Result<()> {
-        let service = service(location)?;
+        remove_secret(&service(location)?).await
+    }
+
+    /// Plain API keys are stored with a marker so a key made only of hex
+    /// digits is never mistaken for the hex form `security` prints for
+    /// non-ASCII entries.
+    const SECRET_MARKER: &str = "codesubs-key:";
+
+    pub async fn store_secret(service: &str, secret: &str) -> Result<()> {
+        if secret.is_empty() || !secret.bytes().all(|byte| byte.is_ascii_graphic()) {
+            return Err(Error::InvalidInput(
+                "an API key must be printable ASCII without spaces".into(),
+            ));
+        }
+        let mut command = format!(
+            "add-generic-password -U -a \"{}\" -s \"{service}\" -X \"",
+            account_name()
+        );
+        for byte in format!("{SECRET_MARKER}{secret}").bytes() {
+            write!(&mut command, "{byte:02x}").expect("writing to a string");
+        }
+        command.push_str("\"\n");
+        let result = security(["-i"], Some(command.as_bytes())).await?;
+        if !result.status.success() {
+            return Err(status_error("store", &result));
+        }
+        Ok(())
+    }
+
+    pub async fn read_secret(service: &str) -> Result<Option<String>> {
+        Ok(read_service(service)
+            .await?
+            .and_then(|bytes| String::from_utf8(bytes).ok())
+            .and_then(|text| text.strip_prefix(SECRET_MARKER).map(str::to_owned)))
+    }
+
+    pub async fn remove_secret(service: &str) -> Result<()> {
         let account = account_name();
         let result = security(
-            ["delete-generic-password", "-a", &account, "-s", &service],
+            ["delete-generic-password", "-a", &account, "-s", service],
             None,
         )
         .await?;
@@ -142,14 +205,14 @@ mod macos {
             None,
             input,
             Duration::from_secs(20),
-            "macOS Claude Keychain operation",
+            "macOS Keychain operation",
         )
         .await
     }
 
     fn status_error(action: &str, result: &ProcessOutput) -> Error {
         Error::Provider(format!(
-            "Could not {action} the Claude Keychain entry ({0}).",
+            "Could not {action} the Keychain entry ({0}).",
             result.status
         ))
     }

@@ -1,4 +1,38 @@
-use codesubs_core::AccountRecord;
+use codesubs_core::{AccountRecord, GatewayRecord, GatewayStatus};
+
+pub fn gateways(gateways: &[GatewayRecord]) {
+    if gateways.is_empty() {
+        println!(
+            "No API accounts yet. Run: printf '%s' \"$KEY\" | codesubs api add melious --key-stdin"
+        );
+        return;
+    }
+    println!(
+        "{:<28} {:<10} {:<22} {:<22} NOTE",
+        "API ACCOUNT", "STATUS", "BIG MODEL", "SMALL MODEL"
+    );
+    for g in gateways {
+        let (status, note) = match &g.health {
+            None => ("unchecked", String::new()),
+            Some(h) => (
+                match h.status {
+                    GatewayStatus::Ok => "ok",
+                    GatewayStatus::Degraded => "degraded",
+                    GatewayStatus::Down => "down",
+                },
+                h.message.clone().unwrap_or_default(),
+            ),
+        };
+        println!(
+            "{:<28} {:<10} {:<22} {:<22} {}",
+            g.reference(),
+            status,
+            g.big_model,
+            g.small_model,
+            note
+        );
+    }
+}
 
 pub fn accounts(accounts: &[AccountRecord]) {
     if accounts.is_empty() {

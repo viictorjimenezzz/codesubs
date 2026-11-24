@@ -22,6 +22,18 @@ struct SubscriptionClient: Sendable {
         return try Self.decode([AccountRecord].self, data)
     }
 
+    func gateways() async throws -> [GatewayRecord] {
+        try await response(GatewayReport.self, arguments: ["api", "list", "--json"]).gateways
+    }
+
+    func checkGateways(timeout: TimeInterval = 120) async throws -> [GatewayRecord] {
+        try await response(GatewayReport.self, arguments: ["api", "check", "--json"], timeout: timeout).gateways
+    }
+
+    func removeGateway(_ account: String) async throws {
+        _ = try await output(["api", "remove", account, "--yes", "--json"], timeout: 90)
+    }
+
     func info() async throws -> ClientInfo {
         try await response(ClientInfo.self, arguments: ["info", "--json"])
     }

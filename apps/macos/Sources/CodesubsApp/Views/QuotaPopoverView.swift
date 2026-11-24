@@ -37,7 +37,7 @@ struct QuotaPopoverView: View {
             }
             .buttonStyle(.plain)
             .help("Refresh all accounts")
-            .disabled(store.accounts.isEmpty || store.isRefreshingAll || store.states.values.contains(where: \.isBusy))
+            .disabled((store.accounts.isEmpty && store.gateways.isEmpty) || store.isRefreshingAll || store.states.values.contains(where: \.isBusy))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -45,7 +45,7 @@ struct QuotaPopoverView: View {
 
     @ViewBuilder
     private var content: some View {
-        if store.accounts.isEmpty {
+        if store.accounts.isEmpty && store.gateways.isEmpty {
             VStack(spacing: 13) {
                 Image(systemName: "gauge.with.dots.needle.33percent")
                     .font(.system(size: 28, weight: .light))
@@ -75,6 +75,12 @@ struct QuotaPopoverView: View {
                                 state: store.states[account.id] ?? .idle
                             )
                         }
+                    }
+                }
+                if !store.gateways.isEmpty {
+                    GatewayHeader()
+                    ForEach(store.gateways) { gateway in
+                        GatewayRow(store: store, gateway: gateway)
                     }
                 }
             }
@@ -193,6 +199,147 @@ private struct ProviderHeader: View {
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 1)
+    }
+}
+
+private struct GatewayHeader: View {
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "key.horizontal")
+                .font(.system(size: 9.5))
+                .foregroundStyle(.secondary)
+                .frame(width: 12, height: 12)
+            Text("API KEYS")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .tracking(0.4)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 1)
+    }
+}
+
+/// One API-key account: a dot that is green only while its key is accepted
+/// and both its models answer, followed by the model pair it launches with.
+private struct GatewayRow: View {
+    @ObservedObject var store: AccountViewModel
+    let gateway: GatewayRecord
+    @State private var confirmingRemoval = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 8) {
+                statusDot
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(gateway.displayName)
+                        .font(.system(size: 12, weight: .medium))
+                    if gateway.slug != "default" {
+                        Text("· \(gateway.slug)")
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .lineLimit(1)
+                Spacer(minLength: 6)
+                if store.isCheckingGateways {
+                    ProgressView().controlSize(.small).scaleEffect(0.7)
+                } else {
+                    Text(statusText)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(statusColor)
+                }
+                menu
+            }
+            Text("\(gateway.bigModel) · \(gateway.smallModel)")
+                .font(.system(size: 10.5, design: .monospaced))
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            if let message = gateway.health?.message {
+                Text(message)
+                    .font(.caption2)
+                    .foregroundStyle(statusColor)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if confirmingRemoval {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Remove \(gateway.reference) and its stored key?")
+                        .font(.caption)
+                    HStack(spacing: 8) {
+                        Button("Remove", role: .destructive) {
+                            confirmingRemoval = false
+                            Task { await store.removeGateway(gateway.id) }
+                        }
+                        .controlSize(.small)
+                        .buttonStyle(.bordered)
+                        Button("Cancel") { confirmingRemoval = false }
+                            .controlSize(.small)
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 6).fill(.secondary.opacity(0.08)))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .help(helpText)
+    }
+
+    private var statusDot: some View {
+        Circle()
+            .fill(statusColor)
+            .frame(width: 8, height: 8)
+            .shadow(color: statusColor.opacity(gateway.health?.status == .ok ? 0.6 : 0), radius: 3)
+            .accessibilityLabel(statusText)
+    }
+
+    private var statusText: String {
+        switch gateway.health?.status {
+        case .ok: return "Operative"
+        case .degraded: return "Degraded"
+        case .down: return "Down"
+        case nil: return "Not checked"
+        }
+    }
+
+    private var statusColor: Color {
+        switch gateway.health?.status {
+        case .ok: return .green
+        case .degraded: return .orange
+        case .down: return .red
+        case nil: return .gray
+        }
+    }
+
+    private var helpText: String {
+        guard let health = gateway.health else { return "Not checked yet" }
+        return "Checked \(health.checkedAt.formatted(.relative(presentation: .named))) · \(health.latencyMs) ms"
+    }
+
+    private var menu: some View {
+        Menu {
+            Button("Check now") { Task { await store.checkGateways() } }
+                .disabled(store.isCheckingGateways)
+            Divider()
+            ForEach(gateway.agents, id: \.self) { agent in
+                Button("Copy \(agent == "claude" ? "Claude Code" : "Codex") launch command") {
+                    copyToPasteboard("codesubs exec \(gateway.reference) -- \(agent)")
+                }
+            }
+            Divider()
+            Button("Remove API account…", role: .destructive) { confirmingRemoval = true }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 18, height: 16)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
     }
 }
 

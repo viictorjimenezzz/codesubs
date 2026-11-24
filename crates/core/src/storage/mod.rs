@@ -10,7 +10,7 @@ pub(crate) use homes::{exists, move_directory, remove_directory, require_directo
 pub(crate) use journal::{Journal, Operation};
 
 pub(crate) use manifest::Manifest;
-pub(crate) use repository::Repository;
+pub(crate) use repository::{Repository, write_text};
 pub(crate) use shared_config::LINK_LEDGER;
 
 pub(crate) fn validate_slug(slug: &str) -> crate::Result<()> {

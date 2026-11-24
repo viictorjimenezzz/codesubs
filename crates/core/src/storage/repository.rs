@@ -8,7 +8,7 @@ use std::{
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-use crate::{AccountRecord, Error, ManagerConfig, Provider, Result};
+use crate::{AccountRecord, Error, GatewayRecord, ManagerConfig, Provider, Result};
 
 use super::{Manifest, homes, locks, shared_config};
 
@@ -32,6 +32,18 @@ impl Repository {
 
     pub(crate) fn manifest_path(&self) -> PathBuf {
         self.root().join("accounts.json")
+    }
+
+    pub(crate) fn gateways_path(&self) -> PathBuf {
+        self.root().join("gateways.json")
+    }
+
+    /// Where an API-key account keeps an agent's configuration folder.
+    pub(crate) fn gateway_home(&self, gateway: &GatewayRecord, agent: Provider) -> PathBuf {
+        self.root()
+            .join("gateways")
+            .join(format!("{}-{}", gateway.service, gateway.slug))
+            .join(agent.as_str())
     }
 
     pub(crate) fn home(&self, provider: Provider, slug: &str) -> PathBuf {
@@ -93,6 +105,37 @@ impl Repository {
         let value = update(&mut manifest)?;
         manifest.write(self)?;
         Ok(value)
+    }
+
+    pub(crate) fn gateways(&self) -> Result<Vec<GatewayRecord>> {
+        if !homes::exists(&self.gateways_path())? {
+            return Ok(Vec::new());
+        }
+        let raw = fs::read(self.gateways_path())?;
+        serde_json::from_slice(&raw)
+            .map_err(|error| Error::CorruptManifest(format!("gateways.json: {error}")))
+    }
+
+    /// API-key accounts live beside the version 3 account manifest, so
+    /// subscription tooling that predates them never rewrites them.
+    pub(crate) fn update_gateways<T>(
+        &self,
+        update: impl FnOnce(&mut Vec<GatewayRecord>) -> Result<T>,
+    ) -> Result<T> {
+        self.initialize()?;
+        let _lock = locks::lock(&self.root().join(".locks/gateways"))?;
+        let mut gateways = self.gateways()?;
+        let value = update(&mut gateways)?;
+        super::manifest::write_json(&self.gateways_path(), &gateways)?;
+        Ok(value)
+    }
+
+    /// Creates an agent folder for an API-key account that shares the user's
+    /// settings, skills and instructions like subscription accounts do.
+    pub(crate) fn prepare_gateway_home(&self, home: &Path, agent: Provider) -> Result<()> {
+        homes::private_directory(home.parent().expect("gateway home has a parent"))?;
+        homes::private_directory(home)?;
+        shared_config::link(agent, home, &self.default_home(agent))
     }
 
     pub(crate) async fn account_lock(&self, id: Uuid) -> Result<File> {
@@ -180,12 +223,12 @@ impl Repository {
     }
 
     pub(crate) fn write_guides(&self) -> Result<()> {
-        write_guide(&self.root().join("README.md"), GUIDE)?;
-        write_guide(&self.root().join("ADD.md"), ADD_GUIDE)
+        write_text(&self.root().join("README.md"), GUIDE)?;
+        write_text(&self.root().join("ADD.md"), ADD_GUIDE)
     }
 }
 
-fn write_guide(path: &Path, text: &str) -> Result<()> {
+pub(crate) fn write_text(path: &Path, text: &str) -> Result<()> {
     use io::Write;
     if fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_file())
         && fs::read(path).is_ok_and(|contents| contents == text.as_bytes())
@@ -207,6 +250,7 @@ Use the standalone codesubs command with the app open or closed.
     codesubs pick claude
     codesubs env claude/work
     codesubs exec codex/work -- codex exec '…'
+    codesubs exec melious/default -- claude      # API-key account
 
 Account references use provider/slug. accounts.json records exact provider home
 paths. Use the path returned by the CLI for Claude Code. Its Keychain entry
@@ -237,4 +281,18 @@ with codesubs list.
 Use --from-default only when explicitly moving an active default login into
 the vault. Sign-in to managed accounts should remain isolated from provider
 sessions using the default home.
+
+# Add an API-key account
+
+An API account runs Claude Code or Codex against a compatible service such as
+Melious with a stored key. It has no sign-in or quota. Pipe the key in so it
+stays out of argv and shell history; it is kept in the macOS Keychain.
+
+    printf '%s' \"$KEY\" | codesubs api add melious --key-stdin
+    codesubs exec melious/default -- claude
+    codesubs exec melious/default --agent codex -- codex
+
+Other services need their endpoints and models (--anthropic-url for Claude
+Code, --openai-url for Codex, --big, --small). Change models later with
+codesubs api set-models. codesubs api check confirms the key and both models.
 ";

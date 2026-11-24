@@ -13,7 +13,7 @@ The repository has two Rust crates in one Cargo workspace and a separate Swift p
 crates/core/
   src/manager.rs       public Codesubs API
   src/models/          accounts, quotas, sign-in and reset values
-  src/services/        account operations, refresh, selection, resets
+  src/services/        account operations, refresh, selection, resets, API-key accounts
   src/providers/       Codex app-server and Claude CLI integrations
   src/storage/         version 3 manifest, account folders, locks, operation journals
   src/runtime/         subprocesses, deadlines, environment, executable discovery
@@ -39,5 +39,7 @@ The default vault is `~/.codesubs`. An explicit CLI `--home` takes precedence ov
 Repository updates use stable interprocess locks and atomic manifest replacement. Per-account locks serialize managed operations; stale refreshes cannot restore deleted or renamed accounts. Operation journals protect current add/reconnect/rename/remove transactions and make interrupted operations recoverable. These are ordinary operation safeguards, not format conversion machinery.
 
 Claude credential identity is tied to the exact account path. Folder renames stage and verify the corresponding Keychain entry before committing and cleaning up. Provider CLIs own refresh tokens. Codex helpers are short-lived to avoid stale credentials. Reset retries reuse an idempotency key.
+
+API-key accounts (`services/gateways.rs`) are deliberately separate from subscription accounts: they have no sign-in, quota or path-keyed credential, so they live in `gateways.json` beside the strictly versioned `accounts.json` (older binaries never rewrite them) under their own lock. Their key is a Keychain item named `codesubs-api-<service>/<slug>`. `exec` builds the agent environment at launch (Claude Code via `ANTHROPIC_*` variables, Codex via a generated per-account `config.toml` and `CODESUBS_GATEWAY_KEY`), so models can change without re-adding the key. A health check is one token per model on the route the agent uses.
 
 The supported platform is macOS. There is no daemon, FFI layer, or extra SDK wrapper. Other Rust programs import the library; other languages use the documented CLI.

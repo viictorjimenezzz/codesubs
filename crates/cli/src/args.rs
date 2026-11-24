@@ -47,14 +47,30 @@ pub enum Command {
         fish: bool,
         #[arg(long)]
         sh: bool,
+        /// Agent for an API account: claude (default) or codex.
+        #[arg(long)]
+        agent: Option<String>,
     },
     /// Print the exact account home.
-    Path { account: String },
+    Path {
+        account: String,
+        /// Agent for an API account: claude (default) or codex.
+        #[arg(long)]
+        agent: Option<String>,
+    },
     /// Replace this process with a command using an account.
     Exec {
         account: String,
+        /// Agent for an API account; inferred from a `claude` or `codex` command.
+        #[arg(long)]
+        agent: Option<String>,
         #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
         command: Vec<OsString>,
+    },
+    /// Manage API-key accounts such as Melious.
+    Api {
+        #[command(subcommand)]
+        command: ApiCommand,
     },
     /// Sign in a new account, verifying its email before registration.
     Add {
@@ -99,4 +115,50 @@ pub enum Command {
     Info,
     /// Print the version.
     Version,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ApiCommand {
+    /// Save an API key read from stdin and verify it works.
+    Add {
+        service: String,
+        #[arg(long)]
+        slug: Option<String>,
+        /// Read the key from stdin so it never appears in argv.
+        #[arg(long)]
+        key_stdin: bool,
+        /// Anthropic Messages API root (Claude Code).
+        #[arg(long)]
+        anthropic_url: Option<String>,
+        /// OpenAI API base including /v1 (Codex).
+        #[arg(long)]
+        openai_url: Option<String>,
+        /// Model for Claude's Opus/Sonnet aliases and Codex.
+        #[arg(long)]
+        big: Option<String>,
+        /// Model for Claude's Haiku alias and background tasks.
+        #[arg(long)]
+        small: Option<String>,
+        /// Save without a health check.
+        #[arg(long)]
+        no_check: bool,
+    },
+    /// Show API accounts and their last health check.
+    List,
+    /// Check that keys and models work; without an account check all.
+    Check { account: Option<String> },
+    /// Choose the big and small models.
+    SetModels {
+        account: String,
+        #[arg(long)]
+        big: Option<String>,
+        #[arg(long)]
+        small: Option<String>,
+    },
+    /// Remove an API account and its stored key.
+    Remove {
+        account: String,
+        #[arg(long)]
+        yes: bool,
+    },
 }

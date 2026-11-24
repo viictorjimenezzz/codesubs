@@ -1,9 +1,11 @@
 mod account;
+mod gateway;
 mod login;
 mod quota;
 mod reset;
 
 pub use account::*;
+pub use gateway::*;
 pub use login::*;
 pub use quota::*;
 pub use reset::*;

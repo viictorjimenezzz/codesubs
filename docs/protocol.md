@@ -13,6 +13,7 @@ Commands accept `--json --protocol-version 1`. Unknown protocol versions fail. S
 - `rename account slug --json`: `{protocolVersion, account}`.
 - `remove account --yes --json`: `{protocolVersion, removed: "provider/slug"}`.
 - `reset account --json`: reset preview. `--yes` explicitly redeems a supported reset and returns `{protocolVersion, outcome, message, account, idempotencyKey}`. `--idempotency-key UUID` allows retrying the same redemption after an uncertain result.
+- `api list --json` and `api check [account] --json`: `{protocolVersion, gateways: [...]}`. Each gateway has `id`, `service`, `slug`, `reference`, `agents` (`claude` when it has an Anthropic endpoint, `codex` for an OpenAI one), optional `anthropicBaseUrl` and `openaiBaseUrl`, `bigModel`, `smallModel` and an optional cached `health: {status: ok|degraded|down, checkedAt, latencyMs, message?}`. `check` makes one-token requests and records the result; `list` returns the cache. Keys are never returned. `api set-models` returns `{protocolVersion, gateway}` and `api remove --yes` returns `{protocolVersion, removed}`. `list --json` is unchanged and contains only subscription accounts. See `fixtures/protocol/gateway-list.json`.
 - `doctor --json`: versioned vault/provider diagnostics; never initiates login or redeems resets.
 
 ## Login events

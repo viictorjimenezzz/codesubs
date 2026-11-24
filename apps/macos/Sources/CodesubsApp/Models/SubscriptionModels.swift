@@ -87,6 +87,38 @@ struct QuotaSnapshot: Codable, Sendable, Equatable {
     }
 }
 
+enum GatewayStatus: String, Codable, Sendable {
+    case ok
+    case degraded
+    case down
+}
+
+struct GatewayHealth: Codable, Sendable, Equatable {
+    let status: GatewayStatus
+    let checkedAt: Date
+    let latencyMs: Int
+    let message: String?
+}
+
+/// An API-key account, such as Melious, that runs Claude Code or Codex.
+struct GatewayRecord: Codable, Identifiable, Sendable, Equatable {
+    let id: UUID
+    let service: String
+    let slug: String
+    let reference: String
+    let agents: [String]
+    let bigModel: String
+    let smallModel: String
+    let health: GatewayHealth?
+
+    var displayName: String { service.prefix(1).uppercased() + service.dropFirst() }
+}
+
+struct GatewayReport: VersionedResponse, Sendable {
+    let protocolVersion: Int
+    let gateways: [GatewayRecord]
+}
+
 protocol VersionedResponse: Decodable {
     var protocolVersion: Int { get }
 }
