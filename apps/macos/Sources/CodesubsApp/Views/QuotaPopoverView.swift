@@ -292,7 +292,6 @@ private struct GatewayRow: View {
         Circle()
             .fill(statusColor)
             .frame(width: 8, height: 8)
-            .shadow(color: statusColor.opacity(gateway.health?.status == .ok ? 0.6 : 0), radius: 3)
             .accessibilityLabel(statusText)
     }
 
@@ -307,9 +306,9 @@ private struct GatewayRow: View {
 
     private var statusColor: Color {
         switch gateway.health?.status {
-        case .ok: return .green
-        case .degraded: return .orange
-        case .down: return .red
+        case .ok: return color(forRemaining: 100)
+        case .degraded: return color(forRemaining: 30)
+        case .down: return color(forRemaining: 0)
         case nil: return .gray
         }
     }
