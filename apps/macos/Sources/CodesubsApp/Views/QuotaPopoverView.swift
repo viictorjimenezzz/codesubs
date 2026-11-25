@@ -457,12 +457,11 @@ private struct AccountRow: View {
         .help(account.lastUpdated.map { "Updated \($0.formatted(.relative(presentation: .named)))" } ?? "")
     }
 
-    /// The bar shown beside the account name: Antigravity's tightest group,
-    /// or the weekly window of the other providers.
+    /// The percentage beside the account name. Antigravity shows one per
+    /// model group instead.
     private var headlineRemaining: Int? {
-        guard let quota = account.quota else { return nil }
-        if account.provider == .antigravity { return quota.windows.map(\.remainingPercent).min() }
-        return quota.weekly?.remainingPercent
+        if account.provider == .antigravity { return nil }
+        return account.quota?.weekly?.remainingPercent
     }
 
     /// One block per group of models that share limits, laid out like the
