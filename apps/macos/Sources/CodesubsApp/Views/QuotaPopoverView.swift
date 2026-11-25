@@ -472,14 +472,9 @@ private struct AccountRow: View {
         let others = group.windows.filter { $0 != weekly }
         return VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(group.name)
+                Text(groupTitle(group.name))
                     .font(.system(size: 11, weight: .medium))
-                    .fixedSize()
-                Text(group.detail ?? "")
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(.tertiary)
                     .lineLimit(1)
-                    .truncationMode(.tail)
                 Spacer(minLength: 4)
                 if let weekly {
                     Text("\(weekly.remainingPercent)%")
@@ -504,6 +499,15 @@ private struct AccountRow: View {
                 .font(.system(size: 10.5).monospacedDigit())
                 .foregroundStyle(.tertiary)
             }
+        }
+    }
+
+    /// Short names for Antigravity's model groups; the models stay in the tooltip.
+    private func groupTitle(_ name: String) -> String {
+        switch name.lowercased() {
+        case "gemini models": return "Gemini"
+        case "claude and gpt models": return "A/OAI"
+        default: return name
         }
     }
 
