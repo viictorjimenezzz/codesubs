@@ -46,7 +46,15 @@ fn window(group: &str, models: Option<&str>, bucket: &Value) -> Option<QuotaWind
     let (kind, minutes) = match bucket["window"].as_str() {
         Some("weekly") => (QuotaWindowKind::Weekly, Some(7 * 24 * 60)),
         Some("daily") => (QuotaWindowKind::Session, Some(24 * 60)),
-        _ => (QuotaWindowKind::Session, None),
+        // Short rolling windows such as "5h".
+        Some(other) => (
+            QuotaWindowKind::Session,
+            other
+                .strip_suffix('h')
+                .and_then(|hours| hours.parse::<i64>().ok())
+                .map(|hours| hours * 60),
+        ),
+        None => (QuotaWindowKind::Session, None),
     };
     Some(QuotaWindow {
         kind,
@@ -78,13 +86,13 @@ mod tests {
     use super::*;
 
     const REAL: &str = r#"{"conversation_id":"","status":"SUCCESS","response":"x","command":{"name":"usage","data":{"groups":[
-      {"name":"Gemini Models","description":"Models within this group: Gemini 3.8 Flash","buckets":[{"id":"gemini-weekly","name":"Weekly Limit Remaining","window":"weekly","remaining_fraction":0.9604799747467041,"reset_time":"2026-12-01T13:04:55Z"}]},
-      {"name":"Claude and GPT models","description":"Models within this group: Claude Sonnet 4.6, Claude Opus 4.6, GPT-OSS 120B","buckets":[{"id":"3p-weekly","name":"Weekly Limit Remaining","window":"weekly","remaining_fraction":1,"reset_time":"2026-12-01T13:07:31Z"}]}]}}}"#;
+      {"name":"Gemini Models","description":"Models within this group: Gemini 3.8 Flash","buckets":[{"id":"gemini-weekly","name":"Weekly Limit Remaining","window":"weekly","remaining_fraction":0.9604799747467041,"reset_time":"2026-12-01T13:04:55Z"},{"id":"gemini-5h","name":"Five Hour Limit Remaining","window":"5h","remaining_fraction":0.5,"reset_time":"2026-11-25T20:57:48Z"}]},
+      {"name":"Claude and GPT models","description":"Models within this group: Claude Sonnet 4.6, Claude Opus 4.6, GPT-OSS 120B","buckets":[{"id":"3p-weekly","name":"Weekly Limit Remaining","window":"weekly","remaining_fraction":1,"reset_time":"2026-12-01T13:07:31Z"},{"id":"3p-5h","name":"Five Hour Limit Remaining","window":"5h","remaining_fraction":0.25,"reset_time":"2026-11-25T20:57:48Z"}]}]}}}"#;
 
     #[test]
-    fn groups_become_weekly_windows_with_their_models() {
+    fn each_group_gets_a_weekly_and_a_five_hour_window_with_its_models() {
         let quota = quota(REAL.as_bytes()).unwrap();
-        assert_eq!(quota.windows.len(), 2);
+        assert_eq!(quota.windows.len(), 4);
         let gemini = &quota.windows[0];
         assert_eq!(gemini.label, "Gemini Models");
         assert_eq!(gemini.used_percent, 4);
@@ -92,11 +100,21 @@ mod tests {
         assert_eq!(gemini.window_duration_minutes, Some(10080));
         assert_eq!(gemini.detail.as_deref(), Some("Gemini 3.8 Flash"));
         assert!(gemini.resets_at.is_some());
-        assert_eq!(quota.windows[1].used_percent, 0);
+        let five_hour = &quota.windows[1];
+        assert_eq!(five_hour.label, "Gemini Models");
+        assert_eq!(five_hour.kind, QuotaWindowKind::Session);
+        assert_eq!(five_hour.window_duration_minutes, Some(300));
+        assert_eq!(five_hour.used_percent, 50);
+        let claude = &quota.windows[2];
+        assert_eq!(claude.used_percent, 0);
         assert_eq!(
-            quota.windows[1].detail.as_deref(),
+            claude.detail.as_deref(),
             Some("Claude Sonnet 4.6, Claude Opus 4.6, GPT-OSS 120B")
         );
+        // The summaries follow the group closest to its limit.
+        assert_eq!(quota.weekly().unwrap().label, "Gemini Models");
+        assert_eq!(quota.session().unwrap().label, "Claude and GPT models");
+        assert_eq!(quota.session().unwrap().used_percent, 75);
     }
 
     #[test]

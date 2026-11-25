@@ -129,10 +129,13 @@ pub struct QuotaSnapshot {
 }
 
 impl QuotaSnapshot {
+    /// The weekly window, or the tightest one when several groups of models
+    /// each have their own weekly limit.
     pub fn weekly(&self) -> Option<&QuotaWindow> {
         self.windows
             .iter()
-            .find(|window| window.kind == QuotaWindowKind::Weekly)
+            .filter(|window| window.kind == QuotaWindowKind::Weekly)
+            .min_by_key(|window| window.remaining_percent())
             .or_else(|| {
                 self.windows
                     .iter()
@@ -141,11 +144,13 @@ impl QuotaSnapshot {
             })
     }
 
+    /// The short window, or the tightest one when there are several.
     pub fn session(&self) -> Option<&QuotaWindow> {
         let weekly = self.weekly();
         self.windows
             .iter()
-            .find(|window| window.kind == QuotaWindowKind::Session && Some(*window) != weekly)
+            .filter(|window| window.kind == QuotaWindowKind::Session && Some(*window) != weekly)
+            .min_by_key(|window| window.remaining_percent())
     }
 
     pub fn available_percent(&self, date: DateTime<Utc>) -> Option<i64> {

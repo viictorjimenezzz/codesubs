@@ -53,8 +53,27 @@ struct QuotaWindow: Codable, Sendable, Equatable, Identifiable {
     /// What the window covers, such as the models sharing a group limit.
     let detail: String?
 
-    var id: String { "\(kind.rawValue)-\(label)" }
+    var id: String { "\(kind.rawValue)-\(label)-\(windowDurationMinutes ?? 0)" }
     var remainingPercent: Int { 100 - min(max(usedPercent, 0), 100) }
+
+    /// The window's length, such as "Week" or "5h".
+    var shortName: String {
+        switch windowDurationMinutes {
+        case 10080: return "Week"
+        case 1440: return "Day"
+        case let minutes? where minutes > 0 && minutes % 60 == 0: return "\(minutes / 60)h"
+        default: return kind == .session ? "Session" : "Week"
+        }
+    }
+}
+
+/// Models that share one set of limits, such as Antigravity's "Gemini Models".
+struct QuotaGroup: Identifiable, Equatable {
+    let name: String
+    let detail: String?
+    let windows: [QuotaWindow]
+
+    var id: String { name }
 }
 
 struct ResetCredits: Codable, Sendable, Equatable {
@@ -85,10 +104,27 @@ struct QuotaSnapshot: Codable, Sendable, Equatable {
     let resetCredits: ResetCredits?
     let credits: CreditBalance?
 
-    /// The quota window drawn as the headline bar.
+    /// The quota window drawn as the headline bar: the weekly window, or the
+    /// tightest one when several model groups each have their own.
     var weekly: QuotaWindow? {
-        windows.first(where: { $0.kind == .weekly })
+        windows.filter { $0.kind == .weekly }.min(by: { $0.remainingPercent < $1.remainingPercent })
             ?? windows.max(by: { ($0.windowDurationMinutes ?? 0) < ($1.windowDurationMinutes ?? 0) })
+    }
+
+    /// Windows grouped by the models they cover, in the order received,
+    /// longest window first within each group.
+    var groups: [QuotaGroup] {
+        var names: [String] = []
+        var byName: [String: [QuotaWindow]] = [:]
+        for window in windows {
+            if byName[window.label] == nil { names.append(window.label) }
+            byName[window.label, default: []].append(window)
+        }
+        return names.map { name in
+            let windows = byName[name, default: []]
+                .sorted { ($0.windowDurationMinutes ?? 0) > ($1.windowDurationMinutes ?? 0) }
+            return QuotaGroup(name: name, detail: windows.first?.detail, windows: windows)
+        }
     }
 }
 

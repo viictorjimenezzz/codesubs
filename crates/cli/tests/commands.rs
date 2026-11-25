@@ -222,6 +222,9 @@ fn shared_swift_fixture_round_trips_and_expired_reset_totals_update_without_refr
     assert_eq!(emitted[0]["quota"]["resetCredits"]["available"], 0);
     assert!(emitted[0]["quota"]["resetCredits"]["nextExpiry"].is_null());
     assert_eq!(emitted[1]["quota"]["credits"]["balance"], 8.5);
+    // Antigravity's summaries follow its tightest model group.
+    assert_eq!(emitted[2]["weeklyRemainingPercent"], 80);
+    assert_eq!(emitted[2]["availablePercent"], 60);
     assert_eq!(
         fs::read(root.path().join("accounts.json")).unwrap(),
         before,

@@ -80,8 +80,8 @@
     "home": "/example/vault/antigravity/team",
     "email": "team@example.com",
     "lastUpdated": "2026-11-24T12:00:00Z",
-    "availablePercent": 97,
-    "weeklyRemainingPercent": 97,
+    "availablePercent": 60,
+    "weeklyRemainingPercent": 80,
     "quota": {
       "windows": [
         {
@@ -93,11 +93,27 @@
           "detail": "Gemini 3.8 Flash"
         },
         {
+          "kind": "session",
+          "label": "Gemini Models",
+          "usedPercent": 40,
+          "resetsAt": "2099-01-01T00:00:00Z",
+          "windowDurationMinutes": 300,
+          "detail": "Gemini 3.8 Flash"
+        },
+        {
           "kind": "weekly",
+          "label": "Claude and GPT models",
+          "usedPercent": 20,
+          "resetsAt": "2099-01-01T00:00:00Z",
+          "windowDurationMinutes": 10080,
+          "detail": "Claude Sonnet 4.6, Claude Opus 4.6, GPT-OSS 120B"
+        },
+        {
+          "kind": "session",
           "label": "Claude and GPT models",
           "usedPercent": 0,
           "resetsAt": "2099-01-01T00:00:00Z",
-          "windowDurationMinutes": 10080,
+          "windowDurationMinutes": 300,
           "detail": "Claude Sonnet 4.6, Claude Opus 4.6, GPT-OSS 120B"
         }
       ]

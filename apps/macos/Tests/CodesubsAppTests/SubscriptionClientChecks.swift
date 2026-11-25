@@ -50,9 +50,14 @@ struct SubscriptionClientChecks {
         try checkNil(accounts[1].quota?.resetCredits)
         let antigravity = try require(accounts.last)
         try checkEqual(antigravity.provider, .antigravity)
-        try checkEqual(antigravity.quota?.windows.map(\.label), ["Gemini Models", "Claude and GPT models"])
+        try checkEqual(antigravity.quota?.windows.map(\.label), ["Gemini Models", "Gemini Models", "Claude and GPT models", "Claude and GPT models"])
         try checkEqual(antigravity.quota?.windows.first?.detail, "Gemini 3.8 Flash")
         try checkEqual(antigravity.quota?.windows.first?.remainingPercent, 97)
+        try checkEqual(antigravity.quota?.weekly?.remainingPercent, 80)
+        let groups = try require(antigravity.quota?.groups)
+        try checkEqual(groups.map(\.name), ["Gemini Models", "Claude and GPT models"])
+        try checkEqual(groups.first?.windows.map(\.shortName), ["Week", "5h"])
+        try checkEqual(groups.first?.detail, "Gemini 3.8 Flash")
     }
 
     static func testGatewaysDecodeSharedFixtureAndUseApiArguments(_ fixture: URL) async throws {

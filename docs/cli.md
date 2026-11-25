@@ -29,7 +29,7 @@ codesubs doctor --json
 codesubs info --json
 ```
 
-Antigravity accounts are selected by repointing `~/.gemini/antigravity-cli/antigravity-oauth-token`, so `exec` and `env` switch the account for every later `agy` too; `path` does not. Their quota has one window per model group (`label`, `detail` lists the models), and no plan or resets.
+Antigravity accounts are selected by repointing `~/.gemini/antigravity-cli/antigravity-oauth-token`, so `exec` and `env` switch the account for every later `agy` too; `path` does not. Their quota has a weekly and a 5-hour window per model group (`label` names the group, `detail` lists its models), and no plan or resets. `WEEK LEFT`, `SESSION LEFT` and `weeklyRemainingPercent` follow the group closest to its limit.
 
 API accounts use `service/slug` (slug defaults to `default`) and resolve in `env`, `path` and `exec` after subscription accounts. They need an agent: `--agent claude|codex`, or the command's name. `env` prints the key, so use it only to `eval` into a shell you trust. Subscription `pick`, `refresh` and the quota table ignore them.
 

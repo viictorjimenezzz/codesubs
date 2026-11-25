@@ -408,7 +408,7 @@ private struct AccountRow: View {
             }
 
             if account.provider == .antigravity, let quota = account.quota {
-                ForEach(quota.windows) { window in groupBar(window) }
+                ForEach(quota.groups) { group in groupBlock(group) }
                 if case .failed(let message) = state {
                     failure(message + (account.lastUpdated.map { " The numbers above are from \($0.formatted(.relative(presentation: .named)))." } ?? ""))
                 }
@@ -465,30 +465,51 @@ private struct AccountRow: View {
         return quota.weekly?.remainingPercent
     }
 
-    /// One bar per group of models that share a limit.
-    private func groupBar(_ window: QuotaWindow) -> some View {
+    /// One block per group of models that share limits: the group's name and
+    /// models, then a labelled bar for each of its windows.
+    private func groupBlock(_ group: QuotaGroup) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Text(window.label)
-                    .font(.system(size: 11, weight: .medium))
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                Text("\(window.remainingPercent)%")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
-                    .foregroundStyle(color(forRemaining: window.remainingPercent))
-            }
-            QuotaBar(remaining: window.remainingPercent, color: color(forRemaining: window.remainingPercent))
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(window.detail ?? "")
+                Text(group.name)
+                    .font(.system(size: 11, weight: .medium))
+                    .fixedSize()
+                Text(group.detail ?? "")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                Spacer(minLength: 4)
-                Text(resetText(for: window)).lineLimit(1)
             }
-            .font(.system(size: 10.5).monospacedDigit())
-            .foregroundStyle(.tertiary)
-            .help(window.detail ?? "")
+            .help(group.detail ?? "")
+            ForEach(group.windows) { window in windowRow(window) }
         }
+    }
+
+    private func windowRow(_ window: QuotaWindow) -> some View {
+        HStack(spacing: 8) {
+            Text(window.shortName)
+                .foregroundStyle(.secondary)
+                .frame(width: 32, alignment: .leading)
+            QuotaBar(remaining: window.remainingPercent, color: color(forRemaining: window.remainingPercent))
+            Text("\(window.remainingPercent)%")
+                .font(.system(size: 10.5, weight: .semibold, design: .rounded).monospacedDigit())
+                .foregroundStyle(color(forRemaining: window.remainingPercent))
+                .frame(width: 34, alignment: .trailing)
+            Text(shortResetText(for: window))
+                .foregroundStyle(.tertiary)
+                .frame(width: 92, alignment: .trailing)
+        }
+        .font(.system(size: 10.5).monospacedDigit())
+        .lineLimit(1)
+        .help(resetText(for: window))
+    }
+
+    /// The reset time alone when it is within a day, otherwise the day.
+    private func shortResetText(for window: QuotaWindow) -> String {
+        guard let date = window.resetsAt else { return "–" }
+        if date.timeIntervalSinceNow < 24 * 60 * 60 {
+            return "resets \(date.formatted(date: .omitted, time: .shortened))"
+        }
+        return "resets \(date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))"
     }
 
     private func failure(_ message: String) -> some View {
